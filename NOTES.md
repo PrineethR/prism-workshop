@@ -71,6 +71,21 @@
 - **One wall per browser.** Save a copy / Open a copy moves it to a co-facilitator; Copy as a list gives frame-by-
   frame text for a doc or chat. Sharing a live wall would need a backend.
 
+## Decisions (phase 1, 2026-10-01, branch `phase-1`)
+
+Feedback: too much to take in on first open. The full v2 kit is kept as is on the `full-kit` branch.
+
+- **Phase 1 is one-day and two-day workshops only.** The format is ours, and teams fit it to their room; there's
+  little room to tailor beyond that yet. The copilot offers One day and Two days. Plans saved with a 2½-hour or
+  half-day length open as one day. The engine still supports the shorter lengths for a later phase.
+- **The copilot and My plan are the product. Everything else is reference.** The nav shows My plan and Copilot. Guide,
+  Catalog, Kit and the Monsoon Edition sit in a Reference menu (listed under the two tools on a phone).
+- **The home page is one screen:** what Prism is, the two tools, draft → shape → review, and a quiet reference row. The
+  spine, module pattern, chai track and Monsoon section came off the home page. Their content still lives in the guide,
+  catalog and edition pages.
+- **Copilot fixes no longer shorten the workshop.** "Give it more time" becomes "Make it two days". The remote warning
+  now offers "Spread it over two days" instead of "Make it a half day".
+
 ## Rejected
 
 - Multiplying the hero glass over the stripes: it turned into a black scribble.

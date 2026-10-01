@@ -19,7 +19,7 @@ export function initChrome() {
   // Underline that slides between nav links; rests under the current page.
   const ink = nav?.querySelector<HTMLElement>('.nav-ink');
   if (nav && ink) {
-    const links = [...nav.querySelectorAll<HTMLAnchorElement>('a:not(.cta)')];
+    const links = [...nav.querySelectorAll<HTMLAnchorElement>('a.main-link')];
     const current = links.find((a) => a.getAttribute('aria-current') === 'page');
     const moveTo = (a?: HTMLAnchorElement) => {
       if (!a) { ink.style.opacity = '0'; return; }
@@ -31,6 +31,16 @@ export function initChrome() {
     links.forEach((a) => a.addEventListener('pointerenter', () => moveTo(a)));
     nav.addEventListener('pointerleave', () => moveTo(current));
     window.addEventListener('resize', () => moveTo(current));
+  }
+
+  // Reference menu: opens on click, closes on Escape or a click elsewhere.
+  const ref = nav?.querySelector<HTMLElement>('[data-ref]');
+  const refBtn = ref?.querySelector<HTMLButtonElement>('.ref-btn');
+  if (ref && refBtn) {
+    const set = (open: boolean) => { ref.classList.toggle('open', open); refBtn.setAttribute('aria-expanded', String(open)); };
+    refBtn.addEventListener('click', (e) => { e.stopPropagation(); set(!ref.classList.contains('open')); });
+    document.addEventListener('click', (e) => { if (!ref.contains(e.target as Node)) set(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ref.classList.contains('open')) { set(false); refBtn.focus(); } });
   }
 
   reveal();

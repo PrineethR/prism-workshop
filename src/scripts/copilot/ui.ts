@@ -28,6 +28,8 @@ interface Saved { a: Answers; answered: Q[]; seenPins?: string[] }
 export function initCopilot() {
   const saved = store.get<Saved | null>(KEY, null);
   let a: Answers = { ...defaults, ...(saved?.a ?? {}) };
+  // Phase 1 offers one- and two-day workshops only; older saved plans may hold a shorter length.
+  if (a.length !== 'day' && a.length !== 'two') a.length = 'day';
   let answered = new Set<Q>(saved?.answered ?? []);
   const seenPins = new Set<string>(saved?.seenPins ?? []);
   if (new URLSearchParams(location.search).get('preset') === 'monsoon') {
@@ -280,7 +282,7 @@ export function initCopilot() {
     let x;
     if ((x = bad('fits'))) {
       if (a.phasesTouched && recommendPhases(a).join() !== a.phases.join()) tips.push({ text: x.detail, fix: { label: 'Use my recommended phases', run: () => { a.phasesTouched = false; followRec(); } } });
-      else if (a.length !== 'two') tips.push({ text: x.detail, fix: { label: 'Give it more time', run: () => { a.length = a.length === 'session' ? 'half' : a.length === 'half' ? 'day' : 'two'; followRec(); } } });
+      else if (a.length !== 'two') tips.push({ text: x.detail, fix: { label: 'Make it two days', run: () => { a.length = 'two'; followRec(); } } });
       else tips.push({ text: x.detail });
     }
     if ((x = bad('leads'))) tips.push({ text: x.detail, fix: { label: `Set leads to ${plan.tables}`, run: () => { a.leads = plan.tables; } } });
@@ -301,8 +303,8 @@ export function initCopilot() {
         a.tools[p] = [...toolsFor(a, p), ideate ? 'prioritisation-matrix' : 'assumption-map'];
       } } });
     }
-    if ((x = bad('remote-fit'))) tips.push({ text: x.detail, fix: a.length === 'day' || a.length === 'two'
-      ? { label: 'Make it a half day', run: () => { a.length = 'half'; followRec(); } }
+    if ((x = bad('remote-fit'))) tips.push({ text: x.detail, fix: a.length === 'day'
+      ? { label: 'Spread it over two days', run: () => { a.length = 'two'; followRec(); } }
       : { label: 'Swap in remote-ready activities', run: () => { a.picks = {}; } } });
     if ((x = bad('follow-through'))) tips.push({ text: x.detail, fix: { label: 'Add a follow-up', run: () => { a.followUp = true; } } });
     if ((x = bad('brief-problem'))) tips.push({ text: x.detail, fix: { label: 'Help me rewrite it', run: () => { answered.delete('brief'); setTimeout(() => $<HTMLButtonElement>('[data-build]').click(), 50); } } });

@@ -24,10 +24,8 @@ const audiences = [
   { id: 'designers', label: 'Designers', note: 'Skip the primers. Go deep on practice.' },
 ];
 const lengths = [
-  { id: 'session', label: '2½ hours', note: 'One phase, done properly', icon: 'timer' },
-  { id: 'half', label: 'Half day', note: '4 hours · 2 phases', icon: 'hourglass' },
-  { id: 'day', label: 'One day', note: '7 hours · 3–4 phases', icon: 'watch' },
-  { id: 'two', label: 'Two days', note: 'How Prism ran it', icon: 'calendar' },
+  { id: 'day', label: 'One day', note: '7 hours · a focused run through 3–4 phases', icon: 'watch' },
+  { id: 'two', label: 'Two days', note: 'How Prism ran it · all four phases, hands-on', icon: 'calendar' },
 ];
 const threads = ['Chai', 'The morning commute', 'Getting ready for work', 'Ordering lunch for the team'];
 ---
@@ -129,7 +127,7 @@ const threads = ['Chai', 'The morning commute', 'Getting ready for work', 'Order
             <button data-choose="format" data-val="room">In the room</button>
             <button data-choose="format" data-val="remote">Remote</button>
           </div>
-          <div class="opts four">
+          <div class="opts">
             {lengths.map((l) => (
               <button class="opt tile" data-choose="length" data-val={l.id}>
                 <img src={img(`icons/${l.icon}.webp`)} alt="" />

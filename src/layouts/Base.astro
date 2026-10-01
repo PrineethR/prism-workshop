@@ -6,14 +6,14 @@ import { u } from '../lib/url';
 interface Props { title: string; description?: string; active?: string; full?: boolean }
 const { title, description = 'Plan, build and run a Prism design thinking workshop: a guide, a catalog of activities and a copilot.', active, full = false } = Astro.props;
 
-const nav = [
-  { href: 'guide/', label: 'Guide', id: 'guide' },
-  { href: 'catalog/', label: 'Catalog', id: 'catalog' },
-  { href: 'kit/', label: 'Kit', id: 'kit' },
-  { href: 'plan/', label: 'My plan', id: 'plan' },
-  { href: 'editions/monsoon/', label: 'Monsoon Edition', id: 'edition' },
-  { href: 'copilot/', label: 'Copilot', id: 'copilot' },
+// Phase 1: the two tools sit in the bar; the rest is reference, one click away.
+const reference = [
+  { href: 'guide/', label: 'Guide', note: 'Ten steps, brief to review', id: 'guide' },
+  { href: 'catalog/', label: 'Catalog', note: 'Activities, methods, cases, templates', id: 'catalog' },
+  { href: 'kit/', label: 'Kit', note: 'Deck, toolkit, guidebook', id: 'kit' },
+  { href: 'editions/monsoon/', label: 'Monsoon Edition', note: 'How the last run went', id: 'edition' },
 ];
+const inReference = reference.some((r) => r.id === active);
 ---
 <!doctype html>
 <html lang="en">
@@ -35,9 +35,18 @@ const nav = [
         </a>
         <button class="menu-btn" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span class="sr">Menu</span></button>
         <nav id="site-nav" class="site-nav" aria-label="Main">
-          {nav.map((n) => (
-            <a href={u(n.href)} aria-current={active === n.id ? 'page' : undefined} class:list={[{ cta: n.id === 'copilot' }]}>{n.label}</a>
-          ))}
+          <div class="ref" data-ref>
+            <button class="ref-btn" aria-expanded="false" aria-controls="ref-menu" class:list={[{ here: inReference }]}>
+              Reference <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" /></svg>
+            </button>
+            <div class="ref-menu" id="ref-menu">
+              {reference.map((r) => (
+                <a href={u(r.href)} aria-current={active === r.id ? 'page' : undefined}><strong>{r.label}</strong><span>{r.note}</span></a>
+              ))}
+            </div>
+          </div>
+          <a class="main-link" href={u('plan/')} aria-current={active === 'plan' ? 'page' : undefined}>My plan</a>
+          <a class="cta" href={u('copilot/')} aria-current={active === 'copilot' ? 'page' : undefined}>Copilot</a>
           <span class="nav-ink" aria-hidden="true"></span>
         </nav>
       </div>
@@ -82,6 +91,27 @@ const nav = [
         border-radius: 999px; transition: color var(--t-fast) var(--ease);
       }
       .site-nav a:hover, .site-nav a[aria-current='page'] { color: var(--accent); }
+
+      /* Reference: a quiet menu, so the first thing people see is the two tools. */
+      .ref { position: relative; }
+      .ref-btn {
+        display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 0; background: none; cursor: pointer;
+        font: inherit; font-weight: 700; font-size: 0.92rem; color: var(--ink-3); border-radius: 999px;
+        transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+      }
+      .ref-btn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; transition: transform var(--t-base) var(--ease); }
+      .ref-btn:hover, .ref-btn[aria-expanded='true'], .ref-btn.here { color: var(--accent); }
+      .ref-btn[aria-expanded='true'] svg { transform: rotate(180deg); }
+      .ref-menu {
+        position: absolute; top: calc(100% + 8px); right: 0; width: 280px; display: grid; padding: 6px;
+        background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lift);
+        opacity: 0; transform: translateY(-6px); visibility: hidden; pointer-events: none;
+        transition: opacity var(--t-base) var(--ease), transform var(--t-base) var(--ease), visibility 0s linear var(--t-base);
+      }
+      .ref.open .ref-menu { opacity: 1; transform: none; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+      .site-nav .ref-menu a { display: grid; gap: 1px; padding: 10px 12px; border-radius: 10px; color: var(--ink); }
+      .site-nav .ref-menu a span { font-weight: 400; font-size: 0.82rem; color: var(--ink-3); }
+      .site-nav .ref-menu a:hover, .site-nav .ref-menu a[aria-current='page'] { background: var(--blush-2); color: var(--accent); }
       .site-nav a.cta { color: var(--accent-ink); background: var(--accent); margin-left: 6px; }
       .site-nav a.cta:hover { color: var(--accent-ink); box-shadow: var(--shadow); }
       .nav-ink {
@@ -107,6 +137,15 @@ const nav = [
         .site-nav.open { transform: none; opacity: 1; pointer-events: auto; visibility: visible; transition-delay: 0s; }
         .site-nav a { padding: 14px 4px; font-size: 1.05rem; border-radius: 0; border-bottom: 1px solid var(--line-2); }
         .site-nav a.cta { margin: 12px 0 0; text-align: center; border-radius: 999px; border: 0; }
+        /* On a phone the reference pages are listed under the two tools, smaller. */
+        .site-nav { display: flex; }
+        .site-nav .main-link { order: 1; }
+        .site-nav a.cta { order: 2; }
+        .ref { order: 3; margin-top: 20px; }
+        .ref-btn { padding: 0 4px 6px; pointer-events: none; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; }
+        .ref-btn svg { display: none; }
+        .ref-menu { position: static; width: auto; padding: 0; border: 0; box-shadow: none; background: none; opacity: 1; transform: none; visibility: visible; pointer-events: auto; }
+        .site-nav .ref-menu a { padding: 10px 4px; border-radius: 0; border-bottom: 1px solid var(--line-2); font-size: 0.95rem; }
         .nav-ink { display: none; }
         .brand .sub { display: none; }
       }
