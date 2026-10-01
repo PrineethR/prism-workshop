@@ -80,9 +80,9 @@ Feedback: too much to take in on first open. The full v2 kit is kept as is on th
   half-day length open as one day. The engine still supports the shorter lengths for a later phase.
 - **The copilot and My plan are the product. Everything else is reference.** The nav shows My plan and Copilot. Guide,
   Catalog, Kit and the Monsoon Edition sit in a Reference menu (listed under the two tools on a phone).
-- **The home page is one screen:** what Prism is, the two tools, draft → shape → review, and a quiet reference row. The
-  spine, module pattern, chai track and Monsoon section came off the home page. Their content still lives in the guide,
-  catalog and edition pages.
+- **The home page keeps the full-kit content.** Cutting it to one screen lost the spine, pattern, chai example and
+  Monsoon section, which the user wanted back. The fix: the four doors become two large cards (Copilot, My plan) right
+  under the hero, the hero's second button opens My plan, and a quiet reference row closes the page.
 - **Copilot fixes no longer shorten the workshop.** "Give it more time" becomes "Make it two days". The remote warning
   now offers "Spread it over two days" instead of "Make it a half day".
 
