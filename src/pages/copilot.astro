@@ -1,0 +1,509 @@
+---
+import Base from '../layouts/Base.astro';
+import Diamond from '../components/Diamond.astro';
+import { img } from '../lib/url';
+
+const goals = [
+  { id: 'learn', label: 'Teach the way of working', note: 'People learn design thinking by doing it on a practice brief. How Prism runs.' },
+  { id: 'solve', label: 'Make progress on a real problem', note: 'Teams work on a live challenge and leave with something tested.' },
+  { id: 'align', label: 'Align leaders on what to solve', note: 'A leadership group agrees the problem, and the bets, before money is spent.' },
+  { id: 'launch', label: 'Kick off a project', note: 'A new team shares a view of users and assumptions, and leaves with a research plan.' },
+];
+// Each stage lights the half of the diamond where the workshop should start.
+const stages = [
+  { id: 'unclear', label: 'We’re not sure what the real problem is', note: 'Lots of opinions, not much evidence.', at: 0 },
+  { id: 'research', label: 'We have research, but no focus', note: 'Interviews, data or complaints, and no agreed problem.', at: 1 },
+  { id: 'problem', label: 'We know the problem, and need ideas', note: 'There’s an agreed problem statement or HMW.', at: 2 },
+  { id: 'idea', label: 'We have an idea to test', note: 'Something is on the table. Is it the right thing?', at: 3 },
+];
+const halves = ['2,15 21,2 21,28', '21,2 40,15 21,28', '40,15 59,2 59,28', '59,2 78,15 59,28'];
+const audiences = [
+  { id: 'leaders', label: 'Leaders & executives', note: 'More “why design”, more cases.' },
+  { id: 'product', label: 'Product & business teams', note: 'Hands-on. Fewer primers.' },
+  { id: 'mixed', label: 'Mixed, cross-functional', note: 'A bit of everything.' },
+  { id: 'designers', label: 'Designers', note: 'Skip the primers. Go deep on practice.' },
+];
+const lengths = [
+  { id: 'session', label: '2½ hours', note: 'One phase, done properly', icon: 'timer' },
+  { id: 'half', label: 'Half day', note: '4 hours · 2 phases', icon: 'hourglass' },
+  { id: 'day', label: 'One day', note: '7 hours · 3–4 phases', icon: 'watch' },
+  { id: 'two', label: 'Two days', note: 'How Prism ran it', icon: 'calendar' },
+];
+const threads = ['Chai', 'The morning commute', 'Getting ready for work', 'Ordering lunch for the team'];
+---
+<Base title="Copilot" active="copilot" description="Answer a few questions and get a draft agenda, a prep countdown, a run sheet and the review checks for your workshop.">
+  <div class="wrap cp">
+    <section class="convo" aria-label="Copilot conversation">
+      <header class="cp-head">
+        <p class="eyebrow">Copilot</p>
+        <h1>Let’s plan <em>your workshop.</em></h1>
+        <p class="muted">Start with what the workshop is for. I’ll recommend the shape, you change anything, and the plan on the right checks itself against the review.</p>
+        <div class="cp-actions">
+          <button class="btn small ghost" data-preset>Start from the Monsoon Edition</button>
+          <button class="btn small ghost" data-reset>Start over</button>
+        </div>
+      </header>
+
+      <!-- Q1 brief -->
+      <div class="turn" data-q="brief">
+        <div class="bot"><span class="av" aria-hidden="true"></span><p>Hi! I’ll draft the plan as we go. First: <strong>what’s the brief?</strong> One sentence, written as a need, not a solution.</p></div>
+        <div class="ans">
+          <label class="field"><span>Workshop name</span><input type="text" data-in="name" maxlength="80" /></label>
+          <label class="field"><span>Brief</span><textarea rows="3" data-in="brief" placeholder="e.g. Customers struggle to find the right information when they need support."></textarea></label>
+          <p class="lint" data-lint aria-live="polite"></p>
+          <div class="builder" data-builder hidden>
+            <p class="small muted">Fill in the three parts. I’ll write the sentence.</p>
+            <div class="b3">
+              <label class="field"><span>Who</span><input type="text" data-b="who" placeholder="Small-business customers" /></label>
+              <label class="field"><span>struggle to…</span><input type="text" data-b="need" placeholder="get a straight answer about a failed payment" /></label>
+              <label class="field"><span>when…</span><input type="text" data-b="when" placeholder="they’re in the middle of serving their own customers" /></label>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn small ghost" data-build aria-expanded="false">Help me write it</button>
+            <button class="btn small ghost" data-sample>Use the Prism brief</button>
+            <button class="btn small" data-next>Next →</button>
+          </div>
+        </div>
+        <button class="summary" data-edit></button>
+      </div>
+
+      <!-- Q2 goal -->
+      <div class="turn" data-q="goal">
+        <div class="bot"><span class="av" aria-hidden="true"></span><p><strong>What should be different when people leave?</strong> This is the question everything else follows from.</p></div>
+        <div class="ans">
+          <div class="opts">
+            {goals.map((g) => <button class="opt" data-pick="goal" data-val={g.id}><strong>{g.label}</strong><span>{g.note}</span></button>)}
+          </div>
+        </div>
+        <button class="summary" data-edit></button>
+      </div>
+
+      <!-- Q3 stage (skipped when teaching the method) -->
+      <div class="turn" data-q="stage">
+        <div class="bot"><span class="av" aria-hidden="true"></span><p><strong>Where are you on the diamond?</strong> A workshop should start where the team is, not at the beginning.</p></div>
+        <div class="ans">
+          <div class="opts">
+            {stages.map((s) => (
+              <button class="opt stage" data-pick="stage" data-val={s.id}>
+                <svg viewBox="0 0 80 30" aria-hidden="true">
+                  {halves.map((pts, i) => <polygon points={pts} class:list={[{ here: i === s.at, after: i > s.at }]} />)}
+                </svg>
+                <strong>{s.label}</strong><span>{s.note}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <button class="summary" data-edit></button>
+      </div>
+
+      <!-- Q4 room -->
+      <div class="turn" data-q="room">
+        <div class="bot"><span class="av" aria-hidden="true"></span><p><strong>Who’s in the room,</strong> and how many? This changes how much “why design matters” you need, and how you share out.</p></div>
+        <div class="ans">
+          <div class="opts">
+            {audiences.map((a) => <button class="opt" data-choose="audience" data-val={a.id}><strong>{a.label}</strong><span>{a.note}</span></button>)}
+          </div>
+          <label class="range">
+            <span class="rv"><strong data-out="people">24</strong> participants · <span data-out="tables">4</span> tables of ~6</span>
+            <input type="range" min="6" max="80" step="1" data-in="people" />
+          </label>
+          <div class="row spread">
+            <div class="stepper">
+              <span>Design leads</span>
+              <button data-step="-1" aria-label="One fewer lead">−</button>
+              <output data-out="leads">4</output>
+              <button data-step="1" aria-label="One more lead">+</button>
+            </div>
+            <button class="btn small" data-next>Next →</button>
+          </div>
+        </div>
+        <button class="summary" data-edit></button>
+      </div>
+
+      <!-- Q5 time & format -->
+      <div class="turn" data-q="time">
+        <div class="bot"><span class="av" aria-hidden="true"></span><p><strong>How much time,</strong> and where?</p></div>
+        <div class="ans">
+          <div class="seg" role="group" aria-label="Format">
+            <button data-choose="format" data-val="room">In the room</button>
+            <button data-choose="format" data-val="remote">Remote</button>
+          </div>
+          <div class="opts four">
+            {lengths.map((l) => (
+              <button class="opt tile" data-choose="length" data-val={l.id}>
+                <img src={img(`icons/${l.icon}.webp`)} alt="" />
+                <strong>{l.label}</strong><span>{l.note}</span>
+              </button>
+            ))}
+          </div>
+          <div class="row spread">
+            <div class="when">
+              <label class="field inline"><span>Starts</span><input type="time" data-in="start" step="900" /></label>
+              <label class="field inline"><span>On</span><input type="date" data-in="date" /></label>
+            </div>
+            <button class="btn small" data-next>Next →</button>
+          </div>
+        </div>
+        <button class="summary" data-edit></button>
+      </div>
+
+      <!-- Q6 phases -->
+      <div class="turn" data-q="phases">
+        <div class="bot"><span class="av" aria-hidden="true"></span><div><p>Here’s what I’d do: <strong data-rec></strong> <span data-rec-why></span></p><p class="small muted">Tap the diamond to change it. <span data-phase-hint></span></p></div></div>
+        <div class="ans">
+          <div class="diamond-pick" data-diamond-pick>
+            <Diamond compact={true} />
+          </div>
+          <div class="row spread">
+            <button class="toggle" data-delight aria-pressed="false"><span class="sw"></span>Add a sprinkle of Delight</button>
+            <div class="row">
+              <button class="btn small ghost" data-use-rec hidden>Back to my recommendation</button>
+              <button class="btn small" data-next>Next →</button>
+            </div>
+          </div>
+        </div>
+        <button class="summary" data-edit></button>
+      </div>
+
+      <!-- Q7 thread -->
+      <div class="turn" data-q="thread">
+        <div class="bot"><span class="av" aria-hidden="true"></span><p><strong>Pick a running example.</strong> One everyday thing you’ll demonstrate every tool on, before teams use it on the brief. Prism used chai.</p></div>
+        <div class="ans">
+          <div class="chips">
+            {threads.map((t) => <button class="opt chipish" data-pick="thread" data-val={t}>{t}</button>)}
+            <button class="opt chipish" data-pick="thread" data-val="brief" data-live-only>The brief itself</button>
+          </div>
+          <label class="field inline"><span>Or your own</span><input type="text" data-in="thread-custom" placeholder="e.g. Paying a utility bill" /><button class="btn small" data-thread-go>Use</button></label>
+        </div>
+        <button class="summary" data-edit></button>
+      </div>
+
+      <!-- Q8 after -->
+      <div class="turn" data-q="after">
+        <div class="bot"><span class="av" aria-hidden="true"></span><p>Last one: <strong>what happens after?</strong> A workshop is the launch, not the whole programme.</p></div>
+        <div class="ans">
+          <div class="opts">
+            <button class="opt" data-pick="followUp" data-val="yes"><strong data-after-yes>Six-week group projects</strong><span data-after-yes-note>Problem statements, check-ins in weeks 3 and 5, a showcase.</span></button>
+            <button class="opt" data-pick="followUp" data-val="no"><strong>A one-off</strong><span>The workshop is the whole thing.</span></button>
+          </div>
+          <button class="toggle" data-energisers aria-pressed="true"><span class="sw"></span>Energiser after every break</button>
+        </div>
+        <button class="summary" data-edit></button>
+      </div>
+
+      <div class="turn final" data-q="done">
+        <div class="bot"><span class="av" aria-hidden="true"></span><div data-advice></div></div>
+      </div>
+
+      <div class="typing" aria-hidden="true"><span></span><span></span><span></span></div>
+    </section>
+
+    <aside class="plan" aria-label="Draft plan" data-plan-panel>
+      <div class="plan-inner">
+        <div class="plan-top">
+          <div>
+            <p class="eyebrow">Draft plan</p>
+            <h2 data-plan-name>My Prism workshop</h2>
+            <p class="plan-sub" data-plan-sub></p>
+          </div>
+          <div class="score" data-score title="Review checks passing">
+            <svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.5" /><circle class="bar" cx="18" cy="18" r="15.5" pathLength="100" /></svg>
+            <span><strong data-score-n>0</strong>/<span data-score-d>0</span></span>
+          </div>
+        </div>
+        <div class="tabs2" role="tablist">
+          <button role="tab" aria-selected="true" data-ptab="agenda">Agenda</button>
+          <button role="tab" aria-selected="false" data-ptab="checks">Checks</button>
+          <button role="tab" aria-selected="false" data-ptab="prep">Prep</button>
+          <button role="tab" aria-selected="false" data-ptab="kit">Kit</button>
+        </div>
+        <div class="pane" data-pane="agenda"><div data-agenda></div></div>
+        <div class="pane" data-pane="checks" hidden><ul class="checks" data-checks></ul></div>
+        <div class="pane" data-pane="prep" hidden><div data-prep></div></div>
+        <div class="pane" data-pane="kit" hidden><div data-kit></div></div>
+        <div class="plan-actions">
+          <button class="btn small" data-review>Send for review</button>
+          <button class="btn small ghost" data-copy>Copy plan</button>
+          <button class="btn small ghost" data-print>Print run sheet</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Only shown when printing: the facilitator's run sheet. -->
+  <section class="runsheet" data-runsheet aria-hidden="true"></section>
+
+  <button class="plan-fab" data-fab>View plan · <span data-fab-score>0/0</span></button>
+
+  <dialog class="review-dlg" data-dlg>
+    <form method="dialog">
+      <h2>Send for review</h2>
+      <p class="muted">Copy this into an email or a message to the core design team. Attach your deck link.</p>
+      <textarea readonly rows="14" data-review-text></textarea>
+      <div class="row">
+        <button class="btn small" type="button" data-copy-review>Copy</button>
+        <button class="btn small ghost" value="close">Close</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" role="status" aria-live="polite" data-toast></div>
+</Base>
+
+<script>
+  import { initCopilot } from '../scripts/copilot/ui';
+  initCopilot();
+</script>
+
+<style>
+  .cp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: clamp(24px, 4vw, 56px); padding-block: clamp(28px, 5vw, 56px) 40px; align-items: start; }
+  .cp-head { display: grid; gap: 14px; margin-bottom: 28px; }
+  .cp-head h1 { font-size: clamp(2.2rem, 4.4vw, 3.6rem); }
+  .cp-head .muted { max-width: 54ch; }
+  .cp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .turn { display: none; gap: 12px; margin-bottom: 18px; }
+  .turn.shown { display: grid; animation: turnIn var(--t-slow) var(--ease) both; }
+  @keyframes turnIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .bot { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+  .av {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--accent);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M8 32 L20 18 L32 32 L44 18 L56 32 L44 46 L32 32 L20 46 Z' fill='none' stroke='white' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-size: 70%; background-repeat: no-repeat; background-position: center;
+  }
+  .bot > p, .bot > div { background: var(--surface-2); border: 1px solid var(--line-2); padding: 12px 16px; border-radius: 4px 16px 16px 16px; max-width: 62ch; }
+  .bot > div { display: grid; gap: 6px; }
+  .ans { margin-left: 46px; display: grid; gap: 12px; padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); }
+  .turn.answered .ans { display: none; }
+  .summary { display: none; }
+  .turn.answered .summary {
+    display: inline-flex; justify-self: end; gap: 10px; align-items: center; max-width: 85%; text-align: left;
+    background: var(--accent); color: #fff; border: 0; border-radius: 16px 4px 16px 16px; padding: 10px 16px; cursor: pointer; font-weight: 700; font-size: 0.95rem;
+    animation: turnIn var(--t-base) var(--ease) both;
+  }
+  .turn.answered .summary::after { content: 'Edit'; font-weight: 400; font-size: 0.78rem; opacity: 0.7; text-decoration: underline; }
+  .turn.answered .summary:hover { background: var(--burgundy-deep); }
+
+  .field { display: grid; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--ink-2); }
+  .field input, .field textarea { font-weight: 400; font-size: 1rem; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical; transition: border-color var(--t-fast), box-shadow var(--t-base); min-width: 0; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--blush); }
+  .field.inline { grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+  .lint { font-size: 0.88rem; min-height: 1.2em; color: var(--ink-3); }
+  .lint.warn { color: var(--warn); }
+  .lint.ok { color: var(--ok); }
+  .builder { display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: var(--blush-2); border: 1px dashed var(--pink-mid); }
+  .b3 { display: grid; grid-template-columns: 1fr 1.3fr 1.3fr; gap: 8px; }
+  .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
+  .row.spread { justify-content: space-between; }
+  .when { display: flex; gap: 12px; flex-wrap: wrap; }
+  .when .field.inline { grid-template-columns: auto auto; }
+  .when input { padding: 6px 10px; }
+
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .opts.four { grid-template-columns: repeat(4, 1fr); }
+  .opt {
+    display: grid; gap: 4px; text-align: left; align-content: start; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); cursor: pointer;
+    transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast) var(--ease);
+  }
+  .opt span { font-size: 0.85rem; color: var(--ink-2); }
+  .opt:hover { border-color: var(--pink-mid); transform: translateY(-1px); }
+  .opt.sel { border-color: var(--accent); background: var(--blush-2); }
+  .opt.tile { justify-items: center; text-align: center; }
+  .opt.tile img { width: 56px; height: 56px; object-fit: contain; transition: transform var(--t-base) var(--ease-pop); }
+  .opt.tile:hover img { transform: rotate(-6deg) scale(1.08); }
+  .opt.stage svg { width: 72px; height: 27px; margin-bottom: 4px; }
+  .opt.stage polygon { fill: none; stroke: var(--pink-mid); stroke-width: 1.2; stroke-linejoin: round; }
+  .opt.stage polygon.after { fill: var(--blush); }
+  .opt.stage polygon.here { fill: var(--accent); stroke: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opt.chipish { border-radius: 999px; padding: 8px 14px; font-weight: 700; }
+  .opt[hidden] { display: none; }
+
+  .seg { display: inline-flex; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); justify-self: start; }
+  .seg button { border: 0; background: none; padding: 7px 16px; border-radius: 999px; font-weight: 700; font-size: 0.88rem; color: var(--ink-2); cursor: pointer; transition: background var(--t-base) var(--ease), color var(--t-fast); }
+  .seg button.sel { background: var(--accent); color: #fff; }
+
+  .range { display: grid; gap: 8px; }
+  .rv { font-size: 0.95rem; color: var(--ink-2); }
+  .rv strong { font-size: 1.5rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+  input[type='range'] { accent-color: var(--accent); width: 100%; }
+  .stepper { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--ink-2); font-size: 0.9rem; }
+  .stepper button { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-size: 1.1rem; transition: transform var(--t-fast) var(--ease), border-color var(--t-fast); }
+  .stepper button:hover { border-color: var(--accent); }
+  .stepper button:active { transform: scale(0.9); }
+  .stepper output { min-width: 2ch; text-align: center; font-size: 1.2rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+  .diamond-pick :global(.half) { cursor: pointer; }
+  .diamond-pick :global(.half:hover polygon) { fill: var(--pink); }
+  .diamond-pick :global(.half.on:hover polygon) { fill: var(--burgundy-deep); }
+  .diamond-pick :global(.half:focus-visible polygon) { stroke: var(--ultra); stroke-width: 4; }
+  .diamond-pick :global(.half:focus) { outline: none; }
+  .toggle { display: inline-flex; gap: 10px; align-items: center; border: 0; background: none; cursor: pointer; font-weight: 700; font-size: 0.92rem; color: var(--ink-2); padding: 4px 0; }
+  .toggle .sw { width: 38px; height: 22px; border-radius: 999px; background: var(--line); position: relative; transition: background var(--t-base) var(--ease); flex: none; }
+  .toggle .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); transition: transform var(--t-base) var(--ease-pop); }
+  .toggle[aria-pressed='true'] .sw { background: var(--accent); }
+  .toggle[aria-pressed='true'] .sw::after { transform: translateX(16px); }
+
+  .typing { display: none; margin-left: 46px; gap: 5px; padding: 12px 16px; border-radius: 16px; background: var(--surface-2); width: max-content; }
+  .typing.on { display: flex; }
+  .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--pink-mid); animation: dot 1s infinite ease-in-out; }
+  .typing span:nth-child(2) { animation-delay: 0.15s; } .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes dot { 0%, 80%, 100% { transform: translateY(0); opacity: 0.5; } 40% { transform: translateY(-5px); opacity: 1; } }
+
+  :global(.advice) { display: grid; gap: 10px; }
+  :global(.advice ul) { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  :global(.advice li) { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+  :global(.advice li .btn) { justify-self: start; white-space: normal; text-align: left; }
+
+  /* Plan panel */
+  .plan { position: sticky; top: calc(var(--head-h) + 16px); max-height: calc(100vh - var(--head-h) - 32px); display: flex; }
+  .plan-inner { display: flex; flex-direction: column; gap: 14px; width: 100%; border-radius: 20px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); padding: 20px; min-height: 0; }
+  .plan-top { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+  .plan-top h2 { font-size: 1.35rem; font-weight: 700; margin-top: 4px; }
+  .plan-sub { font-size: 0.82rem; color: var(--ink-3); margin-top: 4px; }
+  .score { position: relative; width: 56px; height: 56px; flex: none; display: grid; place-items: center; font-size: 0.8rem; color: var(--ink-2); }
+  .score svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .score circle { fill: none; stroke: var(--line); stroke-width: 3.5; }
+  .score .bar { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 0 100; transition: stroke-dasharray var(--t-slow) var(--ease), stroke var(--t-base); }
+  .score strong { color: var(--ink); font-size: 1rem; }
+  .score.all .bar { stroke: var(--ok); }
+  .score.bump { animation: bump var(--t-slow) var(--ease-pop); }
+  @keyframes bump { 40% { transform: scale(1.15); } }
+
+  .tabs2 { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+  .tabs2 button { border: 0; background: none; padding: 8px 12px; font-weight: 700; font-size: 0.88rem; color: var(--ink-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color var(--t-fast), border-color var(--t-base); }
+  .tabs2 button[aria-selected='true'] { color: var(--accent); border-bottom-color: var(--accent); }
+  .pane { overflow-y: auto; min-height: 0; flex: 1; padding-right: 4px; scrollbar-width: thin; }
+  .plan-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--line); }
+
+  :global(.outcome) { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--blush-2); margin-bottom: 14px; }
+  :global(.outcome .eyebrow) { font-size: 0.66rem; }
+  :global(.outcome > p) { font-size: 0.9rem; }
+  :global(.outcome ul) { margin: 2px 0 0; padding-left: 1.1em; font-size: 0.86rem; color: var(--ink-2); display: grid; gap: 2px; }
+  :global(.outcome li::marker) { color: var(--accent); }
+
+  :global(.day-h) { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0 8px; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  :global(.day-h .fit) { letter-spacing: 0; text-transform: none; font-weight: 700; }
+  :global(.day-h .fit.over) { color: var(--warn); }
+  :global(.meter) { height: 6px; border-radius: 6px; background: var(--line-2); display: flex; overflow: hidden; margin-bottom: 12px; }
+  :global(.meter i) { display: block; height: 100%; transition: flex-basis var(--t-slow) var(--ease); }
+  :global(.blk) { display: grid; grid-template-columns: 50px 1fr; gap: 10px; padding: 8px 0; border-top: 1px dashed var(--line-2); }
+  :global(.blk .clock) { font-size: 0.8rem; font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; padding-top: 2px; }
+  :global(.blk details) { min-width: 0; }
+  :global(.blk summary) { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-weight: 700; }
+  :global(.blk summary::-webkit-details-marker) { display: none; }
+  :global(.blk summary .m) { font-size: 0.8rem; color: var(--ink-3); font-weight: 700; white-space: nowrap; }
+  :global(.blk summary .t::before) { content: '▸'; display: inline-block; margin-right: 6px; color: var(--pink-mid); transition: transform var(--t-base) var(--ease); }
+  :global(.blk details[open] summary .t::before) { transform: rotate(90deg); }
+  :global(.blk .focus-tag) { font-size: 0.68rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: var(--accent); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+  :global(.blk.break summary), :global(.blk.lunch summary) { color: var(--ink-3); font-weight: 400; font-style: italic; cursor: default; }
+  :global(.blk.break summary .t::before), :global(.blk.lunch summary .t::before) { content: '☕'; }
+  :global(.blk.phase summary .t) { color: var(--accent); }
+  :global(.parts) { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; gap: 4px; }
+  :global(.parts li) { display: grid; grid-template-columns: 8px 1fr auto; gap: 8px; align-items: center; font-size: 0.86rem; color: var(--ink-2); padding: 4px 0; }
+  :global(.parts li .k) { width: 8px; height: 8px; border-radius: 50%; }
+  :global(.parts li .pm) { font-size: 0.78rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  :global(.parts li a) { color: inherit; text-decoration-color: var(--pink-mid); }
+  :global(.parts .note) { grid-column: 2 / -1; font-size: 0.78rem; color: var(--ink-3); margin-top: -2px; }
+  :global(.k-feel) { background: var(--accent); } :global(.k-theory) { background: var(--ultra); } :global(.k-cases) { background: var(--ultra-soft); }
+  :global(.k-practice) { background: var(--ok); } :global(.k-energiser) { background: #e8a33d; } :global(.k-setup), :global(.k-close), :global(.k-share) { background: var(--pink-mid); }
+  :global(.legend) { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.75rem; color: var(--ink-3); margin-bottom: 10px; }
+  :global(.legend span) { display: inline-flex; gap: 5px; align-items: center; }
+  :global(.legend i) { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  :global(.empty-plan) { text-align: center; padding: 30px 10px; color: var(--ink-3); }
+  :global(.empty-plan img) { width: 120px; margin: 0 auto 12px; opacity: 0.9; }
+
+  /* Tuning a block: opener, tools, time */
+  :global(.tune) { display: grid; gap: 10px; margin: 8px 0 6px; padding: 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line-2); }
+  :global(.tune .why) { font-size: 0.8rem; color: var(--ink-2); font-style: italic; }
+  :global(.tune label.sel) { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 700; color: var(--ink-3); }
+  :global(.tune select) { font-size: 0.85rem; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); min-width: 0; width: 100%; }
+  :global(.tune .tl) { font-size: 0.78rem; font-weight: 700; color: var(--ink-3); }
+  :global(.tools) { display: flex; flex-wrap: wrap; gap: 5px; }
+  :global(.tool) { border: 1px solid var(--line); background: var(--bg); color: var(--ink-2); border-radius: 999px; font-size: 0.76rem; font-weight: 700; padding: 3px 9px; cursor: pointer; transition: all var(--t-fast) var(--ease); }
+  :global(.tool:hover) { border-color: var(--pink-mid); }
+  :global(.tool[aria-pressed='true']) { background: var(--accent); border-color: var(--accent); color: #fff; }
+  :global(.tool[aria-pressed='true']::before) { content: '✓ '; }
+  :global(.adj) { display: flex; gap: 6px; align-items: center; font-size: 0.78rem; font-weight: 700; color: var(--ink-3); }
+  :global(.adj button) { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 2px 10px; font-weight: 700; font-size: 0.78rem; cursor: pointer; color: var(--accent); }
+  :global(.adj button:hover) { background: var(--blush); }
+
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  :global(.chk) { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); }
+  :global(.chk .ic) { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 0.8rem; color: #fff; }
+  :global(.chk.pass .ic) { background: var(--ok); } :global(.chk.warn .ic) { background: #e8a33d; } :global(.chk.fail .ic) { background: #c4314b; }
+  :global(.chk strong) { font-size: 0.92rem; } :global(.chk p) { font-size: 0.84rem; color: var(--ink-2); }
+  :global(.chk.flip) { animation: flip var(--t-slow) var(--ease-pop); }
+  @keyframes flip { 0% { transform: scale(0.96); background: var(--blush); } 100% { transform: none; } }
+
+  :global(.prep) { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  :global(.prep h3) { font-size: 0.74rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin: 14px 0 4px; display: flex; justify-content: space-between; }
+  :global(.prep h3:first-child) { margin-top: 0; }
+  :global(.prep h3 .d) { letter-spacing: 0; text-transform: none; font-weight: 700; color: var(--accent); }
+  :global(.prep label) { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: start; font-size: 0.86rem; color: var(--ink-2); padding: 5px 0; cursor: pointer; }
+  :global(.prep input) { accent-color: var(--ok); margin-top: 3px; }
+  :global(.prep input:checked + span) { text-decoration: line-through; color: var(--ink-3); }
+  :global(.prep .tag) { font-size: 0.68rem; font-weight: 700; color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; white-space: nowrap; }
+  :global(.prep-note) { font-size: 0.8rem; color: var(--ink-3); margin-bottom: 8px; }
+
+  :global(.kit h3) { font-size: 0.78rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin: 14px 0 8px; }
+  :global(.kit h3:first-child) { margin-top: 0; }
+  :global(.kit ul) { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 0.9rem; }
+  :global(.kit .tpls) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0; list-style: none; }
+  :global(.kit .tpls a) { display: grid; gap: 4px; font-size: 0.78rem; text-decoration: none; color: var(--ink-2); }
+  :global(.kit .tpls img) { aspect-ratio: 4 / 3; width: 100%; object-fit: contain; background: var(--blush-2); border-radius: 8px; padding: 6px; }
+
+  .runsheet { display: none; }
+  .plan-fab { display: none; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 0.9rem; pointer-events: none; transition: all var(--t-base) var(--ease); z-index: 90; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  .review-dlg { border: 0; border-radius: 18px; padding: 24px; width: min(640px, calc(100% - 32px)); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-lift); }
+  .review-dlg[open] { animation: turnIn var(--t-base) var(--ease); }
+  .review-dlg::backdrop { background: rgb(29 20 24 / 0.45); backdrop-filter: blur(3px); }
+  .review-dlg form { display: grid; gap: 12px; }
+  .review-dlg textarea { width: 100%; font: 0.85rem/1.5 ui-monospace, Menlo, monospace; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
+
+  @media (max-width: 1100px) { .opts.four { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 1020px) {
+    .cp { grid-template-columns: 1fr; }
+    .plan { position: static; max-height: none; }
+    .pane { overflow: visible; }
+    .plan-fab {
+      display: block; position: fixed; right: 16px; bottom: 16px; z-index: 40; border: 0; border-radius: 999px; padding: 12px 18px;
+      background: var(--accent); color: #fff; font-weight: 700; box-shadow: var(--shadow-lift); cursor: pointer;
+      transition: transform var(--t-base) var(--ease), opacity var(--t-base);
+    }
+    .plan-fab.away { transform: translateY(140%); opacity: 0; pointer-events: none; }
+  }
+  @media (max-width: 560px) {
+    .opts, .opts.four { grid-template-columns: 1fr; }
+    .opt.tile { grid-template-columns: 48px 1fr; justify-items: start; text-align: left; column-gap: 12px; }
+    .opt.tile img { width: 44px; height: 44px; grid-row: span 2; }
+    .ans { margin-left: 0; }
+    .field.inline { grid-template-columns: 1fr; }
+    .b3 { grid-template-columns: 1fr; }
+  }
+
+  /* Print: only the run sheet. */
+  @media print {
+    @page { size: A4 landscape; margin: 12mm; }
+    .cp, .plan-fab, .toast, .review-dlg { display: none !important; }
+    .runsheet { display: block; }
+    :global(.rs-head) { display: grid; gap: 4px; margin-bottom: 10px; }
+    :global(.rs-head h1) { font-size: 18pt; font-weight: 700; }
+    :global(.rs-head p) { font-size: 9pt; color: #444; }
+    :global(.rs-day) { font-size: 10pt; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: #97144d; margin: 12px 0 4px; }
+    :global(.rs) { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    :global(.rs th) { text-align: left; font-size: 7pt; letter-spacing: 0.08em; text-transform: uppercase; color: #97144d; border-bottom: 1.5pt solid #97144d; padding: 4px 6px; }
+    :global(.rs td) { vertical-align: top; border-bottom: 0.5pt solid #ddd; padding: 5px 6px; }
+    :global(.rs tr) { break-inside: avoid; }
+    :global(.rs .tm) { white-space: nowrap; font-weight: 700; width: 9%; }
+    :global(.rs .blk-t) { font-weight: 700; width: 16%; }
+    :global(.rs .brk td) { color: #888; font-style: italic; background: #faf6f8; }
+    :global(.rs ul) { margin: 0; padding-left: 1em; }
+    :global(.rs .steps) { color: #555; }
+    :global(.rs .deb) { font-style: italic; color: #97144d; }
+  }
+</style>

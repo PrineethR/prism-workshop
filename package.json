@@ -1,0 +1,20 @@
+{
+  "name": "prism-workshop-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prism workshop creator's kit: a guide, a catalog and a copilot for running design thinking workshops.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "extract": "python3 scripts/extract_assets.py"
+  },
+  "engines": {
+    "node": ">=18.20.8"
+  },
+  "dependencies": {
+    "@fontsource/lato": "^5.3.0",
+    "astro": "^5.18.2"
+  }
+}

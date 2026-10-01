@@ -1,0 +1,135 @@
+---
+import Base from '../layouts/Base.astro';
+import FigmaEmbed from '../components/FigmaEmbed.astro';
+import ItemCard from '../components/ItemCard.astro';
+import { kit, perspectiveCards } from '../data/kit';
+import { items } from '../data/catalog';
+import { u, img } from '../lib/url';
+
+const templates = items.filter((i) => i.kind === 'template');
+---
+<Base title="Kit" active="kit" description="The deck template, toolkit and guidebook to take away and adapt.">
+  <header class="wrap k-head">
+    <p class="eyebrow">The kit</p>
+    <h1>Take it. Change the content. <em>Keep the structure.</em></h1>
+    <p class="lede">Three files to start from, plus every template on its own. The copilot tells you which templates your plan needs.</p>
+    <nav class="jump" aria-label="On this page">
+      {kit.map((k) => <a class="chip" href={`#${k.id}`}>{k.title}</a>)}
+      <a class="chip" href="#cards">Perspective cards</a>
+      <a class="chip" href="#templates">All templates</a>
+    </nav>
+  </header>
+
+  {kit.map((k, i) => (
+    <section class:list={['wrap', 'artefact', { flip: i % 2 === 1 }]} id={k.id}>
+      <div class="embed" data-reveal>
+        <FigmaEmbed url={k.figma} title={k.title} poster={k.poster} ratio="16 / 10" />
+      </div>
+      <div class="a-copy" data-reveal style="--i:1">
+        <span class="n">{String(i + 1).padStart(2, '0')}</span>
+        <h2>{k.title}</h2>
+        <p class="muted">{k.line}</p>
+        <ul>{k.inside.map((x) => <li>{x}</li>)}</ul>
+      </div>
+    </section>
+  ))}
+
+  <section class="section cards-sec" id="cards">
+    <div class="wrap cards-grid">
+      <div class="c-copy">
+        <p class="eyebrow">Perspective cards</p>
+        <h2>One card per table. <em>Argue from that seat.</em></h2>
+        <p class="lede">Each table picks or is dealt a card and looks at the brief through that role all day. It stops every table from converging on the same safe idea.</p>
+        <ul class="asks">
+          {perspectiveCards.map((c) => <li data-card-ask={c.id}><strong>{c.title}</strong> <span>{c.asks}</span></li>)}
+        </ul>
+      </div>
+      <div class="fan" data-fan tabindex="0" aria-label="The four perspective cards. Hover or focus to spread them.">
+        {perspectiveCards.map((c, i) => (
+          <button class="pcard" style={`--k:${i};--ky:${Math.abs(i - 1.5) * 18}px`} data-card={c.id} aria-label={`${c.title}: ${c.line}`}>
+            <img src={img(c.image)} alt="" loading="lazy" />
+          </button>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section" id="templates">
+    <div class="section-head">
+      <p class="eyebrow">All templates</p>
+      <h2>Every worksheet, on its own.</h2>
+    </div>
+    <div class="grid">{templates.map((t, i) => <ItemCard item={t} i={i} />)}</div>
+    <div class="cta-row">
+      <p>Not sure which ones you need?</p>
+      <a class="btn" href={u('copilot/')}>Let the copilot pick <span class="arrow">→</span></a>
+      <a class="btn ghost" href={u('plan/')}>Mix and match on your wall</a>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // Perspective cards: pick one to bring it to the front and highlight its question.
+  const fan = document.querySelector<HTMLElement>('[data-fan]');
+  fan?.querySelectorAll<HTMLButtonElement>('[data-card]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const on = !b.classList.contains('front');
+      fan.querySelectorAll('.pcard').forEach((x) => x.classList.remove('front'));
+      document.querySelectorAll('[data-card-ask]').forEach((x) => x.classList.remove('lit'));
+      if (on) {
+        b.classList.add('front');
+        fan.classList.add('picked');
+        document.querySelector(`[data-card-ask="${b.dataset.card}"]`)?.classList.add('lit');
+      } else fan.classList.remove('picked');
+    });
+  });
+</script>
+
+<style>
+  .k-head { display: grid; gap: 16px; padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 48px); }
+  .k-head h1 { max-width: 20ch; }
+  .jump { display: flex; flex-wrap: wrap; gap: 8px; }
+  .jump .chip { text-decoration: none; transition: background var(--t-fast); }
+  .jump .chip:hover { background: var(--pink); }
+
+  .artefact { display: grid; grid-template-columns: 1.25fr 1fr; gap: clamp(24px, 4vw, 56px); align-items: center; padding-block: clamp(28px, 5vw, 56px); border-top: 1px solid var(--line-2); }
+  .artefact.flip .embed { order: 2; }
+  .a-copy { display: grid; gap: 12px; }
+  .a-copy .n { font-size: 3rem; font-weight: 900; font-style: italic; color: var(--pink); line-height: 1; }
+  .a-copy ul { margin: 6px 0 0; padding-left: 1.1em; display: grid; gap: 6px; }
+  .a-copy li::marker { color: var(--accent); }
+  @media (max-width: 860px) { .artefact { grid-template-columns: 1fr; } .artefact.flip .embed { order: 0; } }
+
+  .cards-sec { background: var(--blush-2); overflow: hidden; }
+  .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 5vw, 72px); align-items: center; }
+  .c-copy { display: grid; gap: 16px; }
+  .asks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+  .asks li { padding: 10px 14px; border-radius: 10px; border: 1px solid transparent; transition: background var(--t-base), border-color var(--t-base); }
+  .asks li span { color: var(--ink-2); display: block; font-size: 0.92rem; }
+  .asks li.lit { background: var(--surface); border-color: var(--accent); }
+
+  .fan { position: relative; height: clamp(320px, 38vw, 440px); outline: none; }
+  .pcard {
+    position: absolute; left: 50%; top: 50%; width: clamp(150px, 17vw, 210px); aspect-ratio: 0.71; padding: 0; border: 0; border-radius: 12px; overflow: hidden; cursor: pointer;
+    box-shadow: var(--shadow-lift); background: none;
+    transform: translate(-50%, -50%) rotate(calc((var(--k) - 1.5) * 4deg)) translateX(calc((var(--k) - 1.5) * 8px));
+    transition: transform var(--t-slow) var(--ease-pop), box-shadow var(--t-base);
+    z-index: calc(var(--k) + 1);
+  }
+  .pcard img { width: 100%; height: 100%; object-fit: cover; }
+  .fan:hover .pcard, .fan:focus-within .pcard, .fan.picked .pcard {
+    transform: translate(-50%, -50%) rotate(calc((var(--k) - 1.5) * 12deg)) translateX(calc((var(--k) - 1.5) * 92px)) translateY(var(--ky));
+  }
+  .fan .pcard:hover { transform: translate(-50%, -50%) rotate(calc((var(--k) - 1.5) * 12deg)) translateX(calc((var(--k) - 1.5) * 92px)) translateY(-24px); }
+  .fan .pcard.front { z-index: 10; transform: translate(-50%, -50%) rotate(0deg) translateX(calc((var(--k) - 1.5) * 92px)) translateY(-36px) scale(1.06); }
+  @media (max-width: 860px) {
+    .cards-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .pcard { width: 120px; }
+    .fan:hover .pcard, .fan:focus-within .pcard, .fan.picked .pcard { transform: translate(-50%, -50%) rotate(calc((var(--k) - 1.5) * 10deg)) translateX(calc((var(--k) - 1.5) * 58px)); }
+    .fan .pcard.front, .fan .pcard:hover { transform: translate(-50%, -50%) translateX(calc((var(--k) - 1.5) * 58px)) translateY(-24px) scale(1.04); }
+  }
+
+  .cta-row { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 40px; flex-wrap: wrap; }
+</style>

@@ -1,0 +1,303 @@
+---
+import Base from '../../layouts/Base.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import FigmaEmbed from '../../components/FigmaEmbed.astro';
+import { items, kindLabel, roleLabel, slugOf, templateById, type Item } from '../../data/catalog';
+import { phaseById } from '../../data/phases';
+import { u, img } from '../../lib/url';
+
+export function getStaticPaths() {
+  return items.map((item) => ({ params: { slug: slugOf(item) }, props: { item } }));
+}
+const { item } = Astro.props as { item: Item };
+const phase = phaseById[item.phase];
+const slug = slugOf(item);
+
+// Step icons, taken from the instruction slides in the deck.
+const stepIcons: Record<string, string[]> = {
+  'two-truths': ['share', 'superpower', 'realfun', 'guess'],
+  'experience-breakdown': ['journey', 'ask', 'emotion', 'reflect'],
+  'people-watching': ['observe', 'chai-them', 'spill'],
+  'circle-back': ['draw', 'circles', 'beyond', 'discuss'],
+  'sinking-floating': ['build', 'test', 'lens', 'repeat'],
+};
+const icons = stepIcons[item.id];
+
+const templates = (item.templates ?? []).map(templateById).filter(Boolean) as Item[];
+const usedIn = item.kind === 'template' ? items.filter((i) => i.templates?.includes(item.id)) : [];
+const related = items.filter((i) => i.phase === item.phase && slugOf(i) !== slug && i.kind !== item.kind).slice(0, 4);
+const photo = item.image && !item.image.startsWith('icons/') && !item.image.startsWith('templates/');
+const caseImg2 = item.kind === 'case' ? `cases/${item.id}-2.webp` : '';
+const has2 = ['paytm', 'cred', 'boa', 'lucky-iron', 'postit'].includes(item.id);
+const energyLabel = { low: 'Calm', medium: 'Moderate', high: 'High' } as const;
+const facts: [string, string][] = [
+  ...(item.group ? [['Group', item.group]] as [string, string][] : []),
+  ...(item.energy ? [['Energy', energyLabel[item.energy]]] as [string, string][] : []),
+  ...(item.teach ? [['To teach', `${item.teach} min`]] as [string, string][] : []),
+  ...(item.format ? [['Print', item.format]] as [string, string][] : []),
+  ...(item.remote !== undefined && item.kind !== 'template' ? [['Remote', item.remote ? 'Works on a call' : 'Needs a room']] as [string, string][] : []),
+];
+---
+<Base title={item.title} active="catalog" description={item.summary}>
+  <article class="wrap detail">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href={u('catalog/')}>Catalog</a><span>/</span>
+      <a href={u(`catalog/?kind=${item.kind}`)}>{kindLabel[item.kind]}</a><span>/</span>
+      <a href={u(`catalog/?phase=${item.phase}`)}>{phase.short}</a>
+    </nav>
+
+    <header class="d-head">
+      <div class="d-media" style={`view-transition-name: m-${slug}`} class:list={[{ photo }]}>
+        {item.image && <img src={img(item.image)} alt="" />}
+      </div>
+      <div class="d-copy">
+        <div class="tags">
+          <span class="chip">{kindLabel[item.kind]}</span>
+          <span class="chip ghost">{phase.name}</span>
+          {item.role && <span class="chip ghost">{roleLabel[item.role]}</span>}
+        </div>
+        <h1>{item.title}</h1>
+        <p class="lede">{item.summary}</p>
+        {facts.length > 0 && <ul class="facts">{facts.map(([k, v]) => <li><span>{k}</span>{v}</li>)}</ul>}
+        <div class="actions">
+          {(item.kind === 'activity' || item.kind === 'method') && (
+            <button class="btn" data-pin={item.id} aria-pressed="false">
+              <span class="pin-off">Add to my plan</span><span class="pin-on">Added to plan ✓</span>
+            </button>
+          )}
+          {item.slides && <span class="small muted">Deck slides {item.slides[0]}{item.slides.length > 1 ? `–${item.slides[item.slides.length - 1]}` : ''}, Monsoon Edition</span>}
+        </div>
+      </div>
+      {item.minutes && (
+        <div class="timer-card" data-timer={item.minutes * 60}>
+          <span class="eyebrow">{item.minutes}-minute timer</span>
+          <div class="dial">
+            <svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" /><circle class="arc" cx="60" cy="60" r="54" pathLength="1000" /></svg>
+            <span class="time timer" data-time aria-live="off">{String(item.minutes).padStart(2, '0')}:00</span>
+          </div>
+          <div class="t-btns">
+            <button class="btn small" data-t-start>Start</button>
+            <button class="btn small ghost" data-t-reset>Reset</button>
+          </div>
+        </div>
+      )}
+    </header>
+
+    {(item.why || item.when || item.takeaway) && (
+      <section class="block lead">
+        {item.why && <div><h2 class="bh">Why it works</h2><p>{item.why}</p></div>}
+        {item.when && <div><h2 class="bh">When to use it</h2><p>{item.when}</p></div>}
+        {item.takeaway && <div><h2 class="bh">The point to land</h2><p>{item.takeaway}</p></div>}
+      </section>
+    )}
+
+    {item.steps && (
+      <section class="block">
+        <h2 class="bh">{item.kind === 'activity' ? 'How to run it' : 'How it works'}</h2>
+        <ol class:list={['steps', { iconned: !!icons }]} style={`--n:${Math.min(item.steps.length, 4)}`}>
+          {item.steps.map((s, i) => (
+            <li data-reveal style={`--i:${i}`}>
+              {icons?.[i] ? <img src={img(`icons/${icons[i]}.webp`)} alt="" loading="lazy" /> : <span class="sn">{i + 1}</span>}
+              <h3>{s.title}</h3>
+              <p>{s.body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+    )}
+
+    {(item.output || item.materials) && (
+      <section class="block two">
+        {item.output && <div class="panel"><h2 class="bh">By the end, each group has</h2><ul>{item.output.map((o) => <li>{o}</li>)}</ul></div>}
+        {item.materials && <div class="panel"><h2 class="bh">You’ll need</h2><ul>{item.materials.map((o) => <li>{o}</li>)}</ul></div>}
+      </section>
+    )}
+
+    {(item.tips || item.variations || item.say) && (
+      <section class="block two">
+        {item.tips && <div class="panel tips"><h2 class="bh">Facilitator notes</h2><ul>{item.tips.map((t) => <li>{t}</li>)}</ul></div>}
+        {(item.say || item.variations) && (
+          <div class="stack">
+            {item.say && <div class="panel say"><h2 class="bh">Say it out loud</h2>{item.say.map((t) => <p>“{t}”</p>)}</div>}
+            {item.variations && <div class="panel vars"><h2 class="bh">Variations</h2><dl>{item.variations.map((v) => <><dt>{v.label}</dt><dd>{v.body}</dd></>)}</dl></div>}
+          </div>
+        )}
+      </section>
+    )}
+
+    {item.fields && (
+      <section class="block">
+        <h2 class="bh">On the sheet</h2>
+        <ol class="fields">{item.fields.map((f) => <li>{f}</li>)}</ol>
+      </section>
+    )}
+
+    {item.chai && (
+      <section class="block chai">
+        <img src={img('icons/chai-cups.webp')} alt="" loading="lazy" />
+        <div>
+          <h2 class="bh">On the chai</h2>
+          <p>{item.chai}</p>
+        </div>
+      </section>
+    )}
+
+    {item.impact && (
+      <section class:list={['block impact', { solo: !photo }]}>
+        {photo && (
+          <div class="imgs">
+            {item.image && <img src={img(item.image)} alt="" loading="lazy" />}
+            {has2 && <img src={img(caseImg2)} alt="" loading="lazy" />}
+          </div>
+        )}
+        <div>
+          <h2 class="bh">Impact</h2>
+          <ul class="nums">{item.impact.map((m, i) => <li data-reveal style={`--i:${i}`}>{m}</li>)}</ul>
+          {item.source && <p class="small muted">Source: {item.source}</p>}
+          {item.verify && <p class="verify">Added outside the deck. Check these figures against the source before they go on a slide.</p>}
+        </div>
+      </section>
+    )}
+
+    {item.source && item.kind !== 'case' && <p class="small muted src">Source: {item.source}</p>}
+
+    {item.debrief && (
+      <section class="block debrief" data-reveal>
+        <div class="stripe pinstripe" aria-hidden="true"></div>
+        <div>
+          <span class="eyebrow">Debrief slide</span>
+          <p>{item.debrief}</p>
+        </div>
+      </section>
+    )}
+
+    {item.kind === 'template' && (
+      <section class="block">
+        <h2 class="bh">The file</h2>
+        <FigmaEmbed url={item.figma} title={item.title} poster={item.image} />
+        {usedIn.length > 0 && (
+          <p class="used">Used in {usedIn.map((x, i) => <>{i > 0 && ', '}<a href={u(`catalog/${slugOf(x)}/`)}>{x.title}</a></>)}</p>
+        )}
+      </section>
+    )}
+
+    {templates.length > 0 && (
+      <section class="block">
+        <h2 class="bh">Templates</h2>
+        <div class="grid">{templates.map((t, i) => <ItemCard item={t} i={i} />)}</div>
+      </section>
+    )}
+
+    {related.length > 0 && (
+      <section class="block">
+        <h2 class="bh">Also in {phase.short}</h2>
+        <div class="grid">{related.map((r, i) => <ItemCard item={r} i={i} />)}</div>
+      </section>
+    )}
+  </article>
+</Base>
+
+<script>
+  import { initDetail } from '../../scripts/detail';
+  initDetail();
+</script>
+
+<style>
+  .detail { padding-block: 28px 40px; display: grid; gap: clamp(36px, 5vw, 56px); }
+  .crumbs { display: flex; gap: 8px; font-size: 0.85rem; color: var(--ink-3); }
+  .crumbs a { color: var(--ink-2); text-decoration: none; }
+  .crumbs a:hover { color: var(--accent); }
+
+  .d-head { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) auto; gap: clamp(20px, 3vw, 40px); align-items: center; margin-top: -12px; }
+  .d-media { aspect-ratio: 1; border-radius: var(--radius); background: var(--blush-2); display: grid; place-items: center; overflow: hidden; }
+  .d-media img { width: 100%; height: 100%; object-fit: contain; padding: 12%; animation: settle var(--t-slow) var(--ease-pop) both; }
+  .d-media.photo img { object-fit: cover; padding: 0; }
+  .d-media img[src$='.svg'] { padding: 2%; }
+  @keyframes settle { from { transform: scale(0.94) rotate(-2deg); } to { transform: none; } }
+  .d-copy { display: grid; gap: 16px; align-content: center; }
+  .d-copy h1 { font-size: clamp(2rem, 4vw, 3.2rem); }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink-2); }
+  .actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  [data-pin] .pin-on { display: none; }
+  [data-pin][aria-pressed='true'] { background: var(--ok); border-color: var(--ok); }
+  [data-pin][aria-pressed='true'] .pin-on { display: inline; animation: pop var(--t-base) var(--ease-pop); }
+  [data-pin][aria-pressed='true'] .pin-off { display: none; }
+  @keyframes pop { from { transform: scale(0.7); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  .timer-card { display: grid; justify-items: center; gap: 12px; padding: 20px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); min-width: 210px; }
+  .dial { position: relative; width: 150px; height: 150px; display: grid; place-items: center; }
+  .dial svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .dial circle { fill: none; stroke: var(--line-2); stroke-width: 6; }
+  .dial .arc { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 1000 1000; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+  .dial .time { font-size: 2.2rem; }
+  .timer-card.running .time { animation: beat 1s ease-in-out infinite; }
+  .timer-card.finished .time { color: var(--ok); animation: pop var(--t-slow) var(--ease-pop); }
+  @keyframes beat { 50% { opacity: 0.75; } }
+  .t-btns { display: flex; gap: 8px; }
+
+  .bh { font-size: 0.78rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 16px; }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 16px; }
+  .steps li { display: grid; gap: 8px; align-content: start; padding: 20px; border-radius: var(--radius); border: 1px solid var(--line); }
+  .steps img { width: 100%; max-width: 120px; height: 100px; object-fit: contain; object-position: left center; margin-bottom: 6px; }
+  .steps .sn { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 900; }
+  .steps h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 900; }
+  .steps p { color: var(--ink-2); font-size: 0.95rem; }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+  .panel { padding: 22px; border-radius: var(--radius); background: var(--blush-2); }
+  .panel ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+  .panel li::marker { color: var(--accent); }
+
+  .chai { display: grid; grid-template-columns: 110px 1fr; gap: 24px; align-items: center; padding: 24px; border-radius: var(--radius); border: 1px dashed var(--pink-mid); }
+  .chai img { width: 110px; }
+  .chai p { font-size: 1.15rem; font-style: italic; }
+
+  .impact { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; }
+  .impact.solo { grid-template-columns: 1fr; max-width: 760px; }
+  .imgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .imgs img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; }
+  .nums { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+  .nums li { font-size: clamp(1.3rem, 2.4vw, 1.8rem); font-weight: 700; font-style: italic; color: var(--accent); line-height: 1.2; }
+
+  .debrief { display: grid; grid-template-columns: 120px 1fr; min-height: 180px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+  .debrief .stripe { background-size: 10px 100%; }
+  .debrief > div:last-child { padding: 28px; display: grid; gap: 10px; align-content: center; }
+  .debrief p { font-size: clamp(1.4rem, 2.6vw, 2rem); font-style: italic; font-weight: 700; line-height: 1.25; }
+
+  .facts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.9rem; color: var(--ink); }
+  .facts li { display: grid; gap: 1px; }
+  .facts span { font-size: 0.68rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  .lead { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px 36px; }
+  .lead p { font-size: 1.15rem; line-height: 1.5; max-width: 56ch; }
+  .lead .bh { margin-bottom: 8px; }
+  .stack { display: grid; gap: 16px; align-content: start; }
+  .tips { background: var(--surface); border: 1px solid var(--line); }
+  .say p { font-size: 1.1rem; font-style: italic; font-weight: 700; color: var(--accent); }
+  .say p + p { margin-top: 8px; }
+  .vars dl { margin: 0; display: grid; gap: 8px; }
+  .vars dt { font-weight: 900; font-size: 0.82rem; color: var(--accent); }
+  .vars dd { margin: 0; color: var(--ink-2); }
+  .fields { margin: 0; padding: 0; list-style: none; counter-reset: f; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .fields li { counter-increment: f; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); display: flex; gap: 10px; align-items: baseline; }
+  .fields li::before { content: counter(f); font-weight: 900; color: var(--accent); font-size: 0.85rem; }
+  .verify { margin-top: 10px; font-size: 0.84rem; color: var(--warn); padding: 8px 12px; border-radius: 8px; background: #fff7ec; border: 1px solid #f3dcbc; }
+  .src { margin-top: -20px; }
+  .used { margin-top: 12px; color: var(--ink-2); }
+  .used a { color: var(--accent); }
+
+  @media (max-width: 980px) {
+    .d-head { grid-template-columns: 1fr 1fr; }
+    .timer-card { grid-column: 1 / -1; grid-template-columns: auto 1fr auto; justify-items: start; align-items: center; }
+    .dial { width: 96px; height: 96px; } .dial .time { font-size: 1.4rem; }
+    .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .d-head, .impact { grid-template-columns: 1fr; }
+    .d-media { aspect-ratio: 16 / 10; }
+    .steps { grid-template-columns: 1fr; }
+    .chai { grid-template-columns: 1fr; }
+    .timer-card { grid-template-columns: 1fr; justify-items: center; }
+    .debrief { grid-template-columns: 40px 1fr; }
+  }
+</style>

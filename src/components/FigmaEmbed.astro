@@ -1,0 +1,36 @@
+---
+// Embeds a Figma file from its share link. With no link yet, shows a poster
+// that says where the file will go, so the page still makes sense.
+import { img } from '../lib/url';
+
+interface Props { url?: string; title: string; poster?: string; ratio?: string }
+const { url = '', title, poster, ratio = '16 / 10' } = Astro.props;
+const embed = url
+  ? `https://embed.figma.com/${url.replace(/^https:\/\/(www\.)?figma\.com\//, '').replace(/\?.*$/, '')}?embed-host=prism-kit&footer=false`
+  : '';
+---
+<div class="figma" style={`aspect-ratio:${ratio}`}>
+  {embed ? (
+    <iframe src={embed} title={`${title} in Figma`} loading="lazy" allowfullscreen></iframe>
+  ) : (
+    <div class="poster">
+      {poster && <img src={img(poster)} alt="" loading="lazy" />}
+      <div class="note">
+        <svg viewBox="0 0 38 57" width="14" aria-hidden="true"><path fill="#f24e1e" d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z"/><path fill="#0acf83" d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z"/><path fill="#ff7262" d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z"/><path fill="#a259ff" d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z"/><path fill="#1abcfe" d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z"/></svg>
+        <span>Figma file goes here. Add its share link in <code>src/data</code>.</span>
+      </div>
+    </div>
+  )}
+</div>
+<style>
+  .figma { position: relative; width: 100%; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: var(--surface-2); }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .poster { position: absolute; inset: 0; display: grid; place-items: center; }
+  .poster img { width: 100%; height: 100%; object-fit: contain; padding: 6%; opacity: 0.9; }
+  .note {
+    position: absolute; left: 12px; bottom: 12px; right: 12px; display: flex; gap: 10px; align-items: center;
+    background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(8px);
+    border: 1px dashed var(--pink-mid); border-radius: 10px; padding: 10px 12px; font-size: 0.82rem; color: var(--ink-2);
+  }
+  code { font-size: 0.85em; background: var(--blush); padding: 1px 5px; border-radius: 4px; }
+</style>

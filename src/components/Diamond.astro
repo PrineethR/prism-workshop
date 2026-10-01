@@ -1,0 +1,112 @@
+---
+// The Double Diamond. It draws itself in, a glint of light runs round the
+// outline, and each half lights up for the phase it stands for. Pages set the
+// lit phases with `active`; scripts can change them via [data-phase].on.
+import { phaseById, type PhaseId } from '../data/phases';
+
+interface Props {
+  active?: PhaseId[];
+  links?: Partial<Record<PhaseId, string>>;
+  compact?: boolean;
+  labels?: boolean;
+  id?: string;
+  class?: string;
+}
+const { active = [], links = {}, compact = false, labels = true, id, class: cls } = Astro.props;
+
+const halves: { id: PhaseId; pts: string; lx: number; label: string }[] = [
+  { id: 'discover', pts: '20,150 210,20 210,280', lx: 140, label: 'Discover' },
+  { id: 'define', pts: '210,20 400,150 210,280', lx: 280, label: 'Define' },
+  { id: 'ideate', pts: '400,150 590,20 590,280', lx: 520, label: 'Ideate' },
+  { id: 'prototype', pts: '590,20 780,150 590,280', lx: 660, label: 'Prototype' },
+];
+const outline = 'M20 150 L210 20 L400 150 L590 20 L780 150 L590 280 L400 150 L210 280 Z';
+---
+<figure class:list={['diamond', { compact }, cls]} id={id} data-diamond>
+  <svg viewBox="0 0 800 300" role="img" aria-label="The Double Diamond: Discover, Define, Ideate, Prototype and test">
+    {halves.map((h, i) => {
+      const href = links[h.id];
+      const isOn = active.includes(h.id) || (h.id === 'ideate' && active.includes('delight'));
+      const shape = (
+        <g class:list={['half', { on: isOn }]} data-phase={h.id} style={`--i:${i}`}>
+          <polygon points={h.pts} />
+          {labels && <text x={h.lx} y="156" text-anchor="middle">{h.label}</text>}
+        </g>
+      );
+      return href ? <a href={href} aria-label={`${h.label}: ${phaseById[h.id].tagline}`}>{shape}</a> : shape;
+    })}
+    <path class="edge" d={outline} pathLength="1000" />
+    <path class="spine" d="M210 20 V280 M590 20 V280" pathLength="1000" />
+    <path class="glint" d={outline} pathLength="1000" />
+  </svg>
+  {!compact && (
+    <figcaption>
+      <span>Problem</span>
+      <span class="mid">Designing the <em>right thing</em></span>
+      <span>Final brief</span>
+      <span class="mid">Designing <em>things right</em></span>
+      <span>Solution</span>
+    </figcaption>
+  )}
+</figure>
+
+<style>
+  .diamond { margin: 0; width: 100%; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+  .half polygon {
+    fill: var(--blush-2); stroke: var(--bg); stroke-width: 2.5;
+    transition: fill var(--t-base) var(--ease), transform var(--t-base) var(--ease-pop);
+    transform-box: fill-box; transform-origin: center;
+  }
+  .half text {
+    font: 700 19px 'Lato', sans-serif; fill: var(--ink-2); letter-spacing: 0.01em; pointer-events: none;
+    transition: fill var(--t-base) var(--ease);
+  }
+  .compact .half text { font-size: 26px; }
+  .half.on polygon { fill: var(--accent); }
+  .half.on text { fill: #fff; }
+  a .half { cursor: pointer; }
+  a:hover .half polygon, a:focus-visible .half polygon { fill: var(--pink); transform: scale(1.03); }
+  a:hover .half.on polygon, a:focus-visible .half.on polygon { fill: var(--burgundy-deep); }
+  a:hover .half text { fill: var(--burgundy-deep); }
+  a:hover .half.on text { fill: #fff; }
+  a:focus-visible { outline: none; }
+
+  .edge, .spine { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+  .spine { stroke-width: 1.2; stroke-dasharray: 6 8; opacity: 0.5; }
+  .glint { fill: none; stroke: #fff; stroke-width: 3; stroke-dasharray: 40 960; opacity: 0.9; mix-blend-mode: screen; }
+
+  /* Draw-in: the outline traces itself, then the halves fill in sequence. */
+  [data-diamond] .edge { stroke-dasharray: 1000; stroke-dashoffset: 1000; }
+  [data-diamond].drawn .edge { animation: draw 1.4s var(--ease) forwards; }
+  [data-diamond] .half { opacity: 0; }
+  [data-diamond].drawn .half { animation: fade var(--t-slow) var(--ease) forwards; animation-delay: calc(500ms + var(--i) * 120ms); }
+  [data-diamond] .glint { opacity: 0; }
+  [data-diamond].drawn .glint { animation: glint 7s linear 1.6s infinite; }
+
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes glint { 0% { stroke-dashoffset: 1000; opacity: 0.95; } 100% { stroke-dashoffset: 0; opacity: 0.95; } }
+
+  figcaption {
+    display: grid; grid-template-columns: auto 1fr auto 1fr auto; align-items: center; gap: 10px; margin-top: 14px;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
+  }
+  figcaption .mid { text-align: center; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 0.92rem; color: var(--ink-2); }
+  @media (max-width: 560px) { figcaption .mid { display: none; } figcaption { display: flex; justify-content: space-between; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-diamond] .edge { stroke-dashoffset: 0; }
+    [data-diamond] .half { opacity: 1; }
+    [data-diamond] .glint { display: none; }
+  }
+</style>
+
+<script>
+  // Draw each diamond when it scrolls into view.
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add('drawn'); io.unobserve(e.target); }
+  }, { threshold: 0.25 });
+  document.querySelectorAll('[data-diamond]').forEach((d) => io.observe(d));
+</script>

@@ -1,0 +1,107 @@
+---
+import Base from '../../layouts/Base.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import { items, roleLabel, type Kind, type Role } from '../../data/catalog';
+import { phases } from '../../data/phases';
+
+const kinds: (Kind | 'all')[] = ['all', 'activity', 'method', 'case', 'template'];
+const plural = { all: 'All', activity: 'Activities', method: 'Methods', case: 'Cases', template: 'Templates' };
+const kindOrder: Kind[] = ['activity', 'method', 'case', 'template'];
+const phaseOrder = phases.map((p) => p.id);
+const sorted = [...items].sort((a, b) =>
+  kindOrder.indexOf(a.kind) - kindOrder.indexOf(b.kind) || phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase));
+const roles: Role[] = ['icebreaker', 'opener', 'energiser', 'practice', 'shareout', 'closer'];
+const counts = Object.fromEntries(kinds.map((k) => [k, k === 'all' ? items.length : items.filter((i) => i.kind === k).length]));
+---
+<Base title="Catalog" active="catalog" description="Every activity, method, case study and template from Prism, with timings.">
+  <header class="wrap c-head">
+    <p class="eyebrow">The catalog</p>
+    <h1>Everything we’ve <em>run, used and made.</em></h1>
+    <p class="lede">Activities with their timers, the methods behind each phase, cases with sources, and the templates to print. Open anything to see how to run it, what to watch for, and how to adapt it.</p>
+  </header>
+
+  <div class="filters-wrap">
+    <div class="wrap filters">
+      <div class="tabs" role="tablist" aria-label="Type">
+        {kinds.map((k) => (
+          <button role="tab" data-kind-tab={k} aria-selected={k === 'all' ? 'true' : 'false'}>
+            {plural[k]}<span class="count">{counts[k]}</span>
+          </button>
+        ))}
+        <span class="tab-ink" aria-hidden="true"></span>
+      </div>
+      <label class="search">
+        <svg viewBox="0 0 24 24" width="16" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input type="search" placeholder="Search: chai, HMW, timer…" data-search aria-label="Search the catalog" />
+      </label>
+    </div>
+    <div class="wrap phases" role="group" aria-label="Phase">
+      <button class="pchip" data-phase-chip="" aria-pressed="true">Any phase</button>
+      {phases.map((p) => <button class="pchip" data-phase-chip={p.id} aria-pressed="false">{p.short}</button>)}
+    </div>
+    <div class="wrap more" role="group" aria-label="More filters">
+      <label class="pick"><span>Use</span>
+        <select data-role>
+          <option value="">Any use</option>
+          {roles.map((r) => <option value={r}>{roleLabel[r]}s</option>)}
+        </select>
+      </label>
+      <label class="pick"><span>Length</span>
+        <select data-len>
+          <option value="">Any length</option>
+          <option value="5">5 min or less</option>
+          <option value="15">15 min or less</option>
+          <option value="16">Over 15 min</option>
+        </select>
+      </label>
+      <button class="pchip" data-remote aria-pressed="false">Works on a call</button>
+      <span class="shown" aria-live="polite"><span data-shown>{items.length}</span> shown</span>
+    </div>
+  </div>
+
+  <section class="wrap results">
+    <div class="grid" data-grid>
+      {sorted.map((it, i) => <ItemCard item={it} i={i} />)}
+    </div>
+    <p class="empty" data-empty hidden>Nothing matches. Try another phase or clear the search.</p>
+  </section>
+</Base>
+
+<script>
+  import { initCatalog } from '../../scripts/catalog';
+  initCatalog();
+</script>
+
+<style>
+  .c-head { display: grid; gap: 16px; padding-block: clamp(36px, 6vw, 72px) 28px; }
+  .c-head h1 { max-width: 16ch; }
+
+  .filters-wrap { position: sticky; top: var(--head-h); z-index: 20; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line-2); padding-block: 12px; }
+  .filters { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .tabs { position: relative; display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .tabs button {
+    position: relative; z-index: 1; border: 0; background: none; padding: 8px 14px; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.9rem;
+    color: var(--ink-2); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; transition: color var(--t-base) var(--ease);
+  }
+  .tabs button[aria-selected='true'] { color: #fff; }
+  .tabs .count { font-size: 0.72rem; opacity: 0.7; font-variant-numeric: tabular-nums; }
+  .tab-ink { position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 0; border-radius: 999px; background: var(--accent); transition: transform var(--t-base) var(--ease), width var(--t-base) var(--ease); }
+  .search { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-3); min-width: min(300px, 100%); transition: border-color var(--t-fast), box-shadow var(--t-base); }
+  .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--blush); }
+  .search input { border: 0; outline: 0; background: none; width: 100%; color: var(--ink); }
+
+  .phases { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+  .pchip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 0.82rem; font-weight: 700; color: var(--ink-2); cursor: pointer; transition: all var(--t-fast) var(--ease); }
+  .pchip:hover { border-color: var(--pink-mid); color: var(--accent); }
+  .pchip[aria-pressed='true'] { background: var(--blush); border-color: var(--accent); color: var(--accent); }
+  .more { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
+  .pick { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 700; color: var(--ink-3); }
+  .pick select { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 10px; font-size: 0.82rem; font-weight: 700; color: var(--ink-2); cursor: pointer; }
+  .pick select:focus { outline: none; border-color: var(--accent); }
+  .shown { margin-left: auto; font-size: 0.82rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+  .results { padding-block: 28px 40px; }
+  .empty { text-align: center; color: var(--ink-2); padding: 60px 0; }
+  :global(.item-card.hide) { display: none; }
+  @media (max-width: 640px) { .shown { display: none; } }
+</style>

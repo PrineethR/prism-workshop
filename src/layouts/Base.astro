@@ -1,0 +1,119 @@
+---
+import '../styles/global.css';
+import { u } from '../lib/url';
+
+// `full`: the page fills the window below the header and has no footer (the My plan wall).
+interface Props { title: string; description?: string; active?: string; full?: boolean }
+const { title, description = 'Plan, build and run a Prism design thinking workshop: a guide, a catalog of activities and a copilot.', active, full = false } = Astro.props;
+
+const nav = [
+  { href: 'guide/', label: 'Guide', id: 'guide' },
+  { href: 'catalog/', label: 'Catalog', id: 'catalog' },
+  { href: 'kit/', label: 'Kit', id: 'kit' },
+  { href: 'plan/', label: 'My plan', id: 'plan' },
+  { href: 'editions/monsoon/', label: 'Monsoon Edition', id: 'edition' },
+  { href: 'copilot/', label: 'Copilot', id: 'copilot' },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>{title === 'Prism' ? 'Prism Workshop Kit' : `${title} · Prism`}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={u('favicon.svg')} type="image/svg+xml" />
+  </head>
+  <body class:list={[{ full }]}>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-head">
+      <div class="wrap head-row">
+        <a class="brand" href={u('/')} aria-label="Prism Workshop Kit, home">
+          <span class="word">PRISM</span>
+          <span class="sub">Workshop Kit</span>
+        </a>
+        <button class="menu-btn" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span class="sr">Menu</span></button>
+        <nav id="site-nav" class="site-nav" aria-label="Main">
+          {nav.map((n) => (
+            <a href={u(n.href)} aria-current={active === n.id ? 'page' : undefined} class:list={[{ cta: n.id === 'copilot' }]}>{n.label}</a>
+          ))}
+          <span class="nav-ink" aria-hidden="true"></span>
+        </nav>
+      </div>
+    </header>
+    <main id="main"><slot /></main>
+    {!full && <footer class="site-foot">
+      <div class="wrap foot-row">
+        <div>
+          <span class="word">PRISM</span>
+          <p class="small muted">Humanising products & services. Made by the Axis design team for people who want to run their own workshop.</p>
+        </div>
+        <p class="small muted">v2 · Built from the Monsoon Edition deck, Cohort 3, and standard practice</p>
+      </div>
+    </footer>}
+
+    <script>
+      import { initChrome } from '../scripts/chrome';
+      initChrome();
+    </script>
+
+    <style>
+      .skip { position: absolute; left: -9999px; }
+      .skip:focus { left: 16px; top: 12px; z-index: 100; background: var(--surface); padding: 8px 12px; border-radius: 8px; }
+      .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+      .site-head {
+        position: sticky; top: 0; z-index: 50; height: var(--head-h);
+        background: color-mix(in srgb, var(--bg) 82%, transparent);
+        backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+        border-bottom: 1px solid transparent; transition: border-color var(--t-base) var(--ease);
+      }
+      :global(body.scrolled) .site-head { border-bottom-color: var(--line); }
+      .head-row { height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+
+      .brand { display: flex; align-items: baseline; gap: 10px; text-decoration: none; }
+      .word { font-weight: 900; font-style: italic; color: var(--accent); font-size: 1.45rem; letter-spacing: -0.02em; }
+      .brand .sub { font-size: 0.85rem; color: var(--ink-2); padding-left: 10px; border-left: 1px solid var(--line); }
+
+      .site-nav { position: relative; display: flex; align-items: center; gap: 4px; }
+      .site-nav a {
+        position: relative; padding: 8px 12px; text-decoration: none; font-weight: 700; font-size: 0.92rem; color: var(--ink-2);
+        border-radius: 999px; transition: color var(--t-fast) var(--ease);
+      }
+      .site-nav a:hover, .site-nav a[aria-current='page'] { color: var(--accent); }
+      .site-nav a.cta { color: var(--accent-ink); background: var(--accent); margin-left: 6px; }
+      .site-nav a.cta:hover { color: var(--accent-ink); box-shadow: var(--shadow); }
+      .nav-ink {
+        position: absolute; bottom: 2px; left: 0; height: 2px; width: 0; border-radius: 2px; background: var(--accent);
+        transition: transform var(--t-base) var(--ease), width var(--t-base) var(--ease), opacity var(--t-fast);
+        opacity: 0;
+      }
+
+      .menu-btn { display: none; }
+      @media (max-width: 860px) {
+        .menu-btn {
+          display: grid; place-content: center; gap: 6px; width: 44px; height: 44px; border: 0; background: none; cursor: pointer;
+        }
+        .menu-btn span:not(.sr) { display: block; width: 22px; height: 2px; background: var(--ink); transition: transform var(--t-base) var(--ease); }
+        .menu-btn[aria-expanded='true'] span:nth-child(1) { transform: translateY(4px) rotate(45deg); }
+        .menu-btn[aria-expanded='true'] span:nth-child(2) { transform: translateY(-4px) rotate(-45deg); }
+        .site-nav {
+          position: fixed; inset: var(--head-h) 0 auto 0; flex-direction: column; align-items: stretch; gap: 0;
+          background: var(--bg); border-bottom: 1px solid var(--line); padding: 8px var(--gutter) 20px;
+          transform: translateY(-8px); opacity: 0; pointer-events: none; visibility: hidden;
+          transition: transform var(--t-base) var(--ease), opacity var(--t-base) var(--ease), visibility 0s linear var(--t-base);
+        }
+        .site-nav.open { transform: none; opacity: 1; pointer-events: auto; visibility: visible; transition-delay: 0s; }
+        .site-nav a { padding: 14px 4px; font-size: 1.05rem; border-radius: 0; border-bottom: 1px solid var(--line-2); }
+        .site-nav a.cta { margin: 12px 0 0; text-align: center; border-radius: 999px; border: 0; }
+        .nav-ink { display: none; }
+        .brand .sub { display: none; }
+      }
+
+      .site-foot { border-top: 1px solid var(--line); padding-block: 36px 48px; margin-top: 40px; }
+      .foot-row { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: end; }
+      .foot-row p { max-width: 46ch; margin-top: 6px; }
+    </style>
+  </body>
+</html>

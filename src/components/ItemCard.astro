@@ -1,0 +1,39 @@
+---
+import { kindLabel, roleLabel, slugOf, type Item } from '../data/catalog';
+import { phaseById } from '../data/phases';
+import { u, img } from '../lib/url';
+
+interface Props { item: Item; i?: number }
+const { item, i = 0 } = Astro.props;
+const photo = item.image && !item.image.startsWith('icons/');
+---
+<a class="card item-card" href={u(`catalog/${slugOf(item)}/`)}
+   data-kind={item.kind} data-phase={item.phase} data-minutes={item.minutes ?? ''} data-role={item.role ?? ''} data-remote={item.remote === false ? 'no' : item.remote ? 'yes' : ''} data-title={item.title.toLowerCase()} data-text={`${item.title} ${item.summary} ${item.chai ?? ''} ${item.when ?? ''} ${item.source ?? ''}`.toLowerCase()}
+   style={`--i:${i % 8}`}>
+  <div class="media" style={`view-transition-name: m-${slugOf(item)}`}>
+    {item.image && <img src={img(item.image)} alt="" loading="lazy" decoding="async" class:list={[{ photo: photo && item.kind === 'case' }]} />}
+  </div>
+  <div class="body">
+    <div class="meta">
+      <span>{kindLabel[item.kind]}</span><span aria-hidden="true">·</span><span>{phaseById[item.phase].short}</span>
+      {item.minutes && <span class="mins">{item.minutes} min</span>}
+      {!item.minutes && item.teach && <span class="mins">{item.teach} min to teach</span>}
+    </div>
+    <h3>{item.title}</h3>
+    <p>{item.summary}</p>
+    {(item.role || item.remote === false || item.verify) && (
+      <div class="tags">
+        {item.role && <span>{roleLabel[item.role]}</span>}
+        {item.remote === false && <span class="room">Needs a room</span>}
+        {item.verify && <span class="check">Check figures</span>}
+      </div>
+    )}
+  </div>
+</a>
+<style>
+  .mins { margin-left: auto; color: var(--accent); }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .tags span { font-size: 0.7rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--blush); color: var(--burgundy-deep); }
+  .tags .room { background: var(--surface-2); color: var(--ink-3); border: 1px solid var(--line); }
+  .tags .check { background: #fff7ec; color: var(--warn); }
+</style>

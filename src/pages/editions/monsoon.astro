@@ -1,0 +1,236 @@
+---
+import Base from '../../layouts/Base.astro';
+import { monsoon as m } from '../../data/editions';
+import { u, img } from '../../lib/url';
+
+const total = (rows: { minutes: number }[]) => rows.reduce((s, r) => s + r.minutes, 0);
+const clock = (start: number) => `${String(Math.floor(start / 60)).padStart(2, '0')}:${String(start % 60).padStart(2, '0')}`;
+---
+<Base title="Monsoon Edition" active="edition" description={`${m.programme}: how the Monsoon Edition ran.`}>
+  <section class="ed-hero">
+    <div class="stripes pinstripe" aria-hidden="true"></div>
+    <img class="glass" src={img('deck/glass-loop.webp')} alt="" aria-hidden="true" />
+    <div class="wrap ed-hero-copy">
+      <p class="lockup"><span class="word">PRISM</span><span class="bar"></span><span>{m.name}</span></p>
+      <h1 data-reveal>{m.programme.replace('Learning Accelerator', '')}<em>Learning Accelerator</em></h1>
+      <p class="lede" data-reveal style="--i:1">{m.promise}</p>
+      <div class="ctas" data-reveal style="--i:2">
+        <a class="btn" href={u('copilot/?preset=monsoon')}>Open it in the copilot <span class="arrow">→</span></a>
+        <span class="small muted">{m.cohort} · {m.where}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section prog">
+    <div class="section-head">
+      <p class="eyebrow">The programme</p>
+      <h2>A workshop is the <em>launch</em>, not the whole thing.</h2>
+    </div>
+    <ol class="phases" data-line>
+      {m.phases.map((p, i) => (
+        <li data-reveal style={`--i:${i}`}>
+          <span class="pill">Phase 0{i + 1}</span>
+          <h3>{p.name}</h3>
+          <p class="when">{p.when}</p>
+          <p class="muted">{p.what}</p>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="days-sec">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">The two days</p>
+        <h2>How the time was <em>actually spent.</em></h2>
+        <p class="lede">Bar length is time. Breaks are pale.</p>
+      </div>
+      <div class="days">
+        {m.days.map((d) => {
+          let t = 9 * 60 + 30;
+          const sum = total(d.rows);
+          return (
+            <div class="day">
+              <div class="day-top"><h3>{d.label}</h3><span class="muted small">{d.date} · {Math.floor(sum / 60)}h {sum % 60}m</span></div>
+              <ol>
+                {d.rows.map((r, i) => {
+                  const s = t; t += r.minutes;
+                  return (
+                    <li class={r.kind} style={`--w:${(r.minutes / 75) * 100}%; --i:${i}`} data-reveal>
+                      <span class="c">{clock(s)}</span>
+                      <span class="bar"><span class="fill"></span><span class="lbl"><strong>{r.title}</strong>{r.note && <span>{r.note}</span>}</span></span>
+                      <span class="m">{r.minutes}′</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          );
+        })}
+      </div>
+      <p class="small muted note">Start times are illustrative. The deck lists durations only.</p>
+    </div>
+  </section>
+
+  <section class="wrap section bt">
+    <div class="bt-card">
+      <span class="eyebrow">The brief</span>
+      <p class="big">“{m.brief}”</p>
+    </div>
+    <div class="bt-card chai">
+      <img src={img('icons/teacup.webp')} alt="" loading="lazy" />
+      <span class="eyebrow">The running example</span>
+      <p>{m.thread}</p>
+    </div>
+  </section>
+
+  <section class="section strip-sec">
+    <div class="wrap section-head">
+      <p class="eyebrow">The deck</p>
+      <h2>Thirty slides from <em>two hundred and fifteen.</em></h2>
+      <p class="lede">Drag to browse. Select a slide to enlarge it.</p>
+    </div>
+    <div class="strip" data-drag tabindex="0" aria-label="Slides from the Monsoon Edition deck">
+      {m.slides.map((s, i) => (
+        <button class="slide" data-slide={i} aria-label={`Slide ${s}`}>
+          <img src={img(`slides/s${String(s).padStart(3, '0')}.webp`)} alt={`Slide ${s}`} loading="lazy" draggable="false" />
+          <span>{s}</span>
+        </button>
+      ))}
+    </div>
+  </section>
+
+  <section class="wrap section said">
+    <div>
+      <p class="eyebrow">What people said</p>
+      {m.quotes.map((q) => <blockquote data-reveal>“{q}”</blockquote>)}
+      <p class="small muted">Participants, Prism 2025</p>
+    </div>
+    <div>
+      <p class="eyebrow">The mindset shift</p>
+      <table class="shift">
+        <thead><tr><th>20th century: managing information</th><th></th><th>21st century: managing innovation</th></tr></thead>
+        <tbody>
+          {m.mindset.map(([from, to], i) => (
+            <tr data-reveal style={`--i:${i}`}><td>{from}</td><td class="arr" aria-hidden="true">→</td><td><em>{to}</em></td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <dialog class="lb" data-lb aria-label="Slide viewer">
+    <img data-lb-img alt="" />
+    <div class="lb-bar">
+      <button class="btn small ghost" data-lb-prev aria-label="Previous slide">←</button>
+      <span data-lb-n></span>
+      <button class="btn small ghost" data-lb-next aria-label="Next slide">→</button>
+      <button class="btn small" data-lb-close>Close</button>
+    </div>
+  </dialog>
+</Base>
+
+<script>
+  import { dragScroll } from '../../scripts/drag';
+  document.querySelectorAll<HTMLElement>('[data-drag]').forEach(dragScroll);
+
+  const lb = document.querySelector<HTMLDialogElement>('[data-lb]')!;
+  const lbImg = lb.querySelector<HTMLImageElement>('[data-lb-img]')!;
+  const slides = [...document.querySelectorAll<HTMLButtonElement>('[data-slide]')];
+  let cur = 0;
+  const show = (i: number) => {
+    cur = (i + slides.length) % slides.length;
+    const src = slides[cur].querySelector('img')!;
+    lbImg.src = src.src; lbImg.alt = src.alt;
+    lb.querySelector('[data-lb-n]')!.textContent = `${cur + 1} / ${slides.length}`;
+    lbImg.animate?.([{ opacity: 0.4, transform: 'scale(0.98)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  };
+  slides.forEach((s, i) => s.addEventListener('click', () => {
+    if (s.closest('.dragging')) return;
+    show(i); lb.showModal();
+  }));
+  lb.querySelector('[data-lb-prev]')!.addEventListener('click', () => show(cur - 1));
+  lb.querySelector('[data-lb-next]')!.addEventListener('click', () => show(cur + 1));
+  lb.querySelector('[data-lb-close]')!.addEventListener('click', () => lb.close());
+  lb.addEventListener('click', (e) => { if (e.target === lb) lb.close(); });
+  lb.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') show(cur - 1); if (e.key === 'ArrowRight') show(cur + 1); });
+</script>
+
+<style>
+  .ed-hero { position: relative; min-height: min(78vh, 680px); display: grid; align-items: center; overflow: hidden; border-bottom: 1px solid var(--line-2); }
+  .ed-hero .stripes { position: absolute; left: 0; top: 0; bottom: 0; width: 34%; background-size: 10px 100%; animation: wipe 1.1s var(--ease) both; }
+  .ed-hero .glass { position: absolute; left: 8%; top: 50%; width: min(60vw, 760px); transform: translateY(-50%) rotate(-8deg); filter: drop-shadow(0 30px 40px rgb(115 18 61 / 0.2)); animation: drift 12s ease-in-out infinite alternate; pointer-events: none; }
+  @keyframes wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes drift { from { transform: translateY(-52%) rotate(-10deg); } to { transform: translateY(-48%) rotate(-5deg); } }
+  .ed-hero-copy { position: relative; display: grid; gap: 18px; justify-items: start; padding-left: min(42%, 520px); padding-block: 48px; }
+  .lockup { display: flex; align-items: center; gap: 12px; font-size: 1.1rem; color: var(--ink-2); }
+  .lockup .word { font-weight: 900; font-style: italic; color: var(--accent); font-size: 1.6rem; }
+  .lockup .bar { width: 1px; height: 22px; background: var(--ink-3); }
+  .ed-hero h1 { font-size: clamp(2.2rem, 4.6vw, 3.8rem); }
+  .ed-hero h1 em { display: block; }
+  .ctas { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  @media (max-width: 860px) {
+    .ed-hero { min-height: auto; }
+    .ed-hero .stripes { width: 100%; height: 180px; bottom: auto; }
+    .ed-hero .glass { width: 90vw; top: 90px; left: 5%; }
+    .ed-hero-copy { padding-left: 0; padding-top: 220px; }
+  }
+
+  .phases { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; position: relative; }
+  .phases::before { content: ''; position: absolute; left: 0; right: 0; top: 15px; height: 2px; background: linear-gradient(90deg, var(--accent), var(--pink)); transform-origin: left; animation: grow 1.2s var(--ease) both; animation-timeline: view(); animation-range: entry 10% cover 40%; }
+  @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  .phases li { position: relative; display: grid; gap: 8px; align-content: start; padding-top: 0; }
+  .pill { justify-self: start; position: relative; z-index: 1; padding: 6px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.06em; }
+  .phases h3 { font-size: 1.6rem; font-weight: 400; margin-top: 8px; }
+  .when { font-weight: 700; color: var(--accent); font-size: 0.92rem; }
+  @media (max-width: 760px) { .phases { grid-template-columns: 1fr; } .phases::before { display: none; } }
+
+  .days-sec { background: var(--blush-2); padding-block: clamp(56px, 8vw, 100px); }
+  .days { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .day { background: var(--surface); border-radius: var(--radius); padding: 20px; border: 1px solid var(--line); }
+  .day-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+  .day ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .day li { display: grid; grid-template-columns: 44px 1fr 32px; gap: 10px; align-items: center; }
+  .day .c { font-size: 0.78rem; color: var(--ink-3); font-variant-numeric: tabular-nums; font-weight: 700; }
+  .day .m { font-size: 0.78rem; color: var(--ink-3); text-align: right; }
+  .day .bar { position: relative; min-height: 38px; display: flex; align-items: center; }
+  .day .fill { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w); border-radius: 8px; background: var(--pink); border-left: 3px solid var(--accent); transform-origin: left; transition: transform var(--t-slow) var(--ease); transform: scaleX(0); transition-delay: calc(var(--i) * 70ms); }
+  .day li.in .fill { transform: none; }
+  .day .lbl { position: relative; padding: 6px 10px; display: grid; font-size: 0.88rem; color: var(--ink); line-height: 1.25; }
+  .day .lbl span { font-size: 0.75rem; color: var(--ink-2); }
+  .day li.break .fill { background: var(--line-2); border-left-color: var(--line); }
+  .day li.break .lbl { color: var(--ink-2); font-style: italic; }
+  .day li.practice .fill { background: color-mix(in srgb, var(--ok) 22%, var(--surface)); border-left-color: var(--ok); }
+  .day li.close .fill { background: var(--blush); border-left-color: var(--pink-mid); }
+  .note { margin-top: 14px; }
+  @media (max-width: 860px) { .days { grid-template-columns: 1fr; } }
+
+  .bt { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+  .bt-card { padding: clamp(22px, 3vw, 36px); border-radius: var(--radius); border: 1px solid var(--line); display: grid; gap: 12px; align-content: start; }
+  .bt-card .big { font-size: clamp(1.3rem, 2.4vw, 1.9rem); line-height: 1.3; color: var(--accent); }
+  .bt-card.chai img { width: 110px; }
+  @media (max-width: 760px) { .bt { grid-template-columns: 1fr; } }
+
+  .strip { display: flex; gap: 14px; overflow-x: auto; padding: 6px max(var(--gutter), (100vw - var(--max)) / 2) 24px; cursor: grab; scrollbar-width: thin; }
+  .strip.dragging { cursor: grabbing; }
+  .slide { flex: 0 0 clamp(240px, 28vw, 360px); position: relative; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; cursor: zoom-in; transition: transform var(--t-base) var(--ease), box-shadow var(--t-base); }
+  .slide img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; user-select: none; }
+  .slide span { position: absolute; right: 8px; bottom: 6px; font-size: 0.72rem; font-weight: 700; color: var(--ink-3); background: rgb(255 255 255 / 0.85); padding: 1px 6px; border-radius: 4px; }
+  .slide:hover { transform: translateY(-4px) rotate(-0.6deg); box-shadow: var(--shadow-lift); }
+
+  .said { display: grid; grid-template-columns: 1fr 1.2fr; gap: clamp(28px, 5vw, 72px); }
+  .said blockquote { margin: 14px 0; font-size: clamp(1.3rem, 2.4vw, 1.8rem); font-style: italic; line-height: 1.3; }
+  .shift { width: 100%; border-collapse: collapse; margin-top: 14px; }
+  .shift th { text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .shift td { padding: 12px 0; border-bottom: 1px solid var(--line-2); }
+  .shift .arr { color: var(--accent); padding: 0 12px; }
+  @media (max-width: 760px) { .said { grid-template-columns: 1fr; } }
+
+  .lb { border: 0; padding: 0; background: transparent; max-width: min(1200px, 94vw); width: 100%; }
+  .lb::backdrop { background: rgb(20 10 15 / 0.82); backdrop-filter: blur(4px); }
+  .lb img { width: 100%; border-radius: 10px; background: #fff; }
+  .lb-bar { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 12px; color: #fff; }
+  .lb-bar .ghost { color: #fff; border-color: rgb(255 255 255 / 0.5); }
+  .lb[open] { animation: lbIn var(--t-base) var(--ease); }
+  @keyframes lbIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+</style>

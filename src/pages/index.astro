@@ -1,0 +1,287 @@
+---
+import Base from '../layouts/Base.astro';
+import Diamond from '../components/Diamond.astro';
+import { phases, modulePattern } from '../data/phases';
+import { find } from '../data/catalog';
+import { monsoon } from '../data/editions';
+import { u, img } from '../lib/url';
+
+const doors = [
+  { href: 'guide/', n: '01', title: 'Guide', line: 'Ten steps from a business brief to a reviewed plan.', icon: 'calendar' },
+  { href: 'catalog/', n: '02', title: 'Catalog', line: 'Over 140 activities, methods, cases and templates, with timings and facilitator notes.', icon: 'cubes' },
+  { href: 'copilot/', n: '03', title: 'Copilot', line: 'Say what the workshop is for. Get an agenda, a prep countdown, a run sheet and the review checks.', icon: 'spaceship' },
+  { href: 'kit/', n: '04', title: 'Kit', line: 'The deck, toolkit and guidebook to take away and adapt.', icon: 'envelope' },
+];
+
+const core = phases.filter((p) => p.diamond && p.id !== 'delight');
+const openers: Record<string, string> = { discover: 'people-watching', define: 'what-is-this', ideate: 'circle-back', prototype: 'sinking-floating' };
+
+const chai = ['stakeholder-map', 'observations', 'insights', 'how-might-we', 'crazy-8s', 'prioritisation-matrix', 'role-play'].map((id) => find(id, 'method')!);
+---
+<Base title="Prism" active="home">
+  <!-- Hero ─────────────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow" data-reveal>Prism · Workshop creator’s kit</p>
+        <h1 data-reveal style="--i:1">Run a Prism workshop <em>without waiting for us.</em></h1>
+        <p class="lede" data-reveal style="--i:2">
+          Everything we learned running design thinking workshops at Axis: the path, the activities, the templates, and a copilot
+          that drafts your agenda. You build it and run it. We review it before it goes out.
+        </p>
+        <div class="ctas" data-reveal style="--i:3">
+          <a class="btn" href={u('copilot/')}>Plan a workshop <span class="arrow">→</span></a>
+          <a class="btn ghost" href={u('guide/')}>Read the guide</a>
+        </div>
+      </div>
+      <div class="hero-art" data-prism aria-hidden="true">
+        <img class="glass" src={img('deck/glass-ribbon.webp')} alt="" fetchpriority="high" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Doors ────────────────────────────────────────────────────────────── -->
+  <section class="wrap doors">
+    {doors.map((d, i) => (
+      <a class="door" href={u(d.href)} data-reveal style={`--i:${i}`}>
+        <span class="n">{d.n}</span>
+        <img src={img(`icons/${d.icon}.webp`)} alt="" loading="lazy" />
+        <h2>{d.title}</h2>
+        <p>{d.line}</p>
+        <span class="go" aria-hidden="true">→</span>
+      </a>
+    ))}
+  </section>
+
+  <!-- The spine ────────────────────────────────────────────────────────── -->
+  <section class="section spine">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">The spine</p>
+        <h2>Every Prism workshop follows <em>the Double Diamond.</em></h2>
+        <p class="lede">Pick a half to see what goes in it.</p>
+      </div>
+      <Diamond links={Object.fromEntries(core.map((p) => [p.id, u(`catalog/?phase=${p.id}`)]))} />
+      <div class="phase-row">
+        {core.map((p, i) => {
+          const o = find(openers[p.id])!;
+          return (
+            <a class="phase" href={u(`catalog/?phase=${p.id}`)} data-phase-card={p.id} data-reveal style={`--i:${i}`}>
+              <img src={img(`icons/${p.icon}.webp`)} alt="" loading="lazy" />
+              <h3>{p.name}</h3>
+              <p>{p.tagline}</p>
+              <span class="opener">Opens with <strong>{o.title}</strong> · {o.minutes} min</span>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+
+  <!-- Module pattern ───────────────────────────────────────────────────── -->
+  <section class="section pattern">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">The pattern</p>
+        <h2>Every phase is built <em>the same way.</em></h2>
+        <p class="lede">People learn the rhythm on the first phase. After that they can spend their attention on the content.</p>
+      </div>
+      <ol class="beats" data-beats>
+        {modulePattern.map((b, i) => (
+          <li style={`--i:${i}`} tabindex="0">
+            <span class="dot">{i + 1}</span>
+            <strong>{b.label}</strong>
+            <span class="note">{b.note}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <!-- Running example ──────────────────────────────────────────────────── -->
+  <section class="section chai">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">The running example</p>
+        <h2>Show every tool <em>on the same cup of chai.</em></h2>
+        <p class="lede">“The designated tea maker of the house has asked for help to make the process more efficient.” One everyday thing, carried through every phase.</p>
+      </div>
+    </div>
+    <div class="chai-track" data-drag tabindex="0" aria-label="The chai example, tool by tool">
+      {chai.map((m, i) => (
+        <a class="chai-card" href={u(`catalog/${m.id}/`)} style={`--i:${i}`}>
+          <span class="step">{String(i + 1).padStart(2, '0')}</span>
+          <span class="tool">{m.title}</span>
+          <p>{m.chai}</p>
+        </a>
+      ))}
+      <div class="chai-card sketch">
+        <img src={img('deck/chai-4.webp')} alt="Sketch: grating ginger over a cup" loading="lazy" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Edition ──────────────────────────────────────────────────────────── -->
+  <section class="section edition">
+    <div class="wrap edition-grid">
+      <figure class="ed-photo">
+        <img src={img('deck/cohort-room.webp')} alt="A facilitator presenting to tables of participants, with Prism banners either side of the screen" loading="lazy" />
+      </figure>
+      <div class="ed-copy">
+        <p class="eyebrow">Latest run · {monsoon.cohort}</p>
+        <h2>The {monsoon.name}</h2>
+        <p class="lede">{monsoon.programme}. Two days in person at {monsoon.where}, followed by six weeks of group projects.</p>
+        <dl class="stats">
+          <div><dt>2</dt><dd>days in the room</dd></div>
+          <div><dt>8</dt><dd>activities</dd></div>
+          <div><dt>1</dt><dd>brief for every team</dd></div>
+          <div><dt>6</dt><dd>weeks to a showcase</dd></div>
+        </dl>
+        <blockquote>“{monsoon.quotes[1]}”<cite>Participant, previous cohort</cite></blockquote>
+        <a class="btn ghost" href={u('editions/monsoon/')}>See how it ran <span class="arrow">→</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Review ───────────────────────────────────────────────────────────── -->
+  <section class="section review">
+    <div class="wrap">
+      <div class="section-head center">
+        <p class="eyebrow">How we stay involved</p>
+        <h2>You build it. <em>We check it.</em></h2>
+      </div>
+      <ol class="flow">
+        <li data-reveal><span>1</span><h3>Draft</h3><p>Use the copilot to put together an agenda that fits your time and your room.</p></li>
+        <li data-reveal style="--i:1"><span>2</span><h3>Self-check</h3><p>The copilot runs most of the review checklist as you plan.</p></li>
+        <li data-reveal style="--i:2"><span>3</span><h3>Review</h3><p>A 30-minute review with the core team, at least two weeks before the day.</p></li>
+      </ol>
+      <div class="center"><a class="btn" href={u('copilot/')}>Start planning <span class="arrow">→</span></a></div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { initHome } from '../scripts/home';
+  initHome();
+</script>
+
+<style>
+  /* Hero */
+  .hero { padding-block: clamp(32px, 6vw, 72px) clamp(40px, 6vw, 80px); overflow: hidden; }
+  .hero-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: clamp(24px, 4vw, 64px); align-items: center; }
+  .hero-copy { display: grid; gap: 22px; }
+  .hero h1 em { display: block; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+
+  .hero-art { position: relative; aspect-ratio: 1 / 0.9; }
+  /* The deck cover: the ribbon on plain white, bleeding off the edge. Its background is pure white, so it sits on the page. */
+  .glass {
+    position: absolute; top: 50%; left: 50%; width: 128%; max-width: none; height: auto;
+    translate: -46% -50%;
+    transform: translate3d(calc(var(--px, 0) * -14px), calc(var(--py, 0) * -10px), 0) rotate(calc(var(--px, 0) * -2deg));
+    transition: transform 0.8s var(--ease);
+    animation: enter 1.2s var(--ease) both, float 10s ease-in-out 1.2s infinite alternate;
+  }
+  @keyframes float { from { translate: -46% calc(-50% - 8px); } to { translate: -46% calc(-50% + 10px); } }
+  @keyframes enter { from { opacity: 0; scale: 0.92; } to { opacity: 1; scale: 1; } }
+
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .hero-art { max-width: 460px; width: 100%; justify-self: center; order: -1; aspect-ratio: 1.4 / 1; }
+    .glass { width: 112%; translate: -50% -50%; }
+    @keyframes float { from { translate: -50% calc(-50% - 6px); } to { translate: -50% calc(-50% + 8px); } }
+  }
+
+  /* Doors */
+  .doors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .door {
+    position: relative; display: grid; align-content: start; gap: 8px; padding: 22px 22px 26px; border-radius: var(--radius);
+    background: var(--blush-2); text-decoration: none; color: inherit; overflow: hidden; border: 1px solid var(--line-2);
+    transition: transform var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease), background var(--t-base) var(--ease);
+  }
+  .door .n { font-size: 0.78rem; font-weight: 900; color: var(--accent); letter-spacing: 0.1em; }
+  .door img { width: 96px; height: 96px; object-fit: contain; margin: 6px 0 4px; transition: transform var(--t-slow) var(--ease-pop); }
+  .door h2 { font-size: 1.5rem; font-weight: 700; }
+  .door p { color: var(--ink-2); font-size: 0.95rem; }
+  .door .go { position: absolute; top: 18px; right: 20px; font-size: 1.2rem; color: var(--accent); transition: transform var(--t-base) var(--ease); }
+  .door:hover { transform: translateY(-4px); box-shadow: var(--shadow-lift); background: var(--surface); }
+  .door:hover img { transform: translateY(-4px) rotate(-6deg) scale(1.08); }
+  .door:hover .go { transform: translateX(4px); }
+  @media (max-width: 980px) { .doors { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .doors { grid-template-columns: 1fr; } .door { grid-template-columns: 72px 1fr; column-gap: 16px; } .door img { width: 72px; height: 72px; grid-row: span 3; } .door .n { display: none; } }
+
+  /* Spine */
+  .phase-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 36px; }
+  .phase {
+    display: grid; gap: 8px; align-content: start; padding: 20px; border-radius: var(--radius); border: 1px solid var(--line);
+    text-decoration: none; color: inherit; transition: border-color var(--t-base) var(--ease), transform var(--t-base) var(--ease), background var(--t-base) var(--ease);
+  }
+  .phase img { width: 64px; height: 64px; object-fit: contain; }
+  .phase p { color: var(--ink-2); font-size: 0.95rem; }
+  .phase .opener { font-size: 0.82rem; color: var(--ink-3); margin-top: 4px; }
+  .phase .opener strong { color: var(--accent); }
+  .phase:hover, .phase.lit { border-color: var(--accent); transform: translateY(-3px); background: var(--blush-2); }
+  @media (max-width: 860px) { .phase-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .phase-row { grid-template-columns: 1fr; } }
+
+  /* Pattern */
+  .pattern { background: var(--blush-2); }
+  .beats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; counter-reset: b; }
+  .beats li {
+    position: relative; display: grid; gap: 8px; align-content: start; padding: 16px 12px 18px; border-radius: 12px; background: var(--surface);
+    border: 1px solid var(--line); cursor: default; transition: transform var(--t-base) var(--ease), border-color var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease);
+  }
+  .beats .dot {
+    width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 0.85rem;
+    background: var(--blush); color: var(--accent); transition: background var(--t-base) var(--ease), color var(--t-base) var(--ease), transform var(--t-base) var(--ease-pop);
+  }
+  .beats strong { font-size: 0.95rem; line-height: 1.2; }
+  .beats .note { font-size: 0.8rem; color: var(--ink-2); line-height: 1.4; opacity: 0.75; transition: opacity var(--t-base); }
+  .beats li.now { border-color: var(--accent); transform: translateY(-6px); box-shadow: var(--shadow); }
+  .beats li.now .dot { background: var(--accent); color: #fff; transform: scale(1.12); }
+  .beats li.now .note { opacity: 1; }
+  .beats li.past .dot { background: var(--pink); }
+  @media (max-width: 1080px) { .beats { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 560px) { .beats { grid-template-columns: 1fr; } .beats li { grid-template-columns: 30px 1fr; column-gap: 12px; } .beats .note { grid-column: 2; } .beats li.now { transform: translateX(4px); } }
+
+  /* Chai */
+  .chai-track {
+    display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 8px max(var(--gutter), (100vw - var(--max)) / 2) 24px;
+    scrollbar-width: thin; cursor: grab; overscroll-behavior-x: contain;
+    scroll-padding-inline: max(var(--gutter), (100vw - var(--max)) / 2);
+  }
+  .chai-track.dragging { cursor: grabbing; scroll-snap-type: none; }
+  .chai-track.dragging a { pointer-events: none; }
+  .chai-card {
+    flex: 0 0 min(320px, 80vw); scroll-snap-align: start; display: grid; align-content: start; gap: 10px; padding: 22px; border-radius: var(--radius);
+    background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: inherit; user-select: none;
+    transition: transform var(--t-base) var(--ease), border-color var(--t-base) var(--ease);
+  }
+  .chai-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .chai-card .step { font-weight: 900; font-size: 2rem; font-style: italic; color: var(--pink-mid); line-height: 1; }
+  .chai-card .tool { font-weight: 700; color: var(--accent); }
+  .chai-card p { color: var(--ink-2); font-size: 0.95rem; }
+  .chai-card.sketch { padding: 0; overflow: hidden; background: #fff; display: grid; place-items: center; }
+  .chai-card.sketch img { width: 100%; pointer-events: none; }
+
+  /* Edition */
+  .edition-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: clamp(28px, 5vw, 72px); align-items: center; }
+  .ed-photo { margin: 0; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; background: var(--blush); }
+  .ed-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .ed-copy { display: grid; gap: 18px; justify-items: start; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 6px 0; width: 100%; }
+  .stats div { border-top: 2px solid var(--accent); padding-top: 10px; }
+  .stats dt { font-size: 2.4rem; font-weight: 300; line-height: 1; color: var(--accent); }
+  .stats dd { margin: 4px 0 0; font-size: 0.85rem; color: var(--ink-2); }
+  blockquote { margin: 0; font-size: 1.25rem; font-style: italic; color: var(--ink); max-width: 40ch; }
+  blockquote cite { display: block; margin-top: 6px; font-size: 0.82rem; font-style: normal; color: var(--ink-3); }
+  @media (max-width: 860px) { .edition-grid { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } }
+
+  /* Review */
+  .center { text-align: center; justify-items: center; }
+  .flow { list-style: none; padding: 0; margin: 0 0 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .flow li { padding: 24px; border-radius: var(--radius); border: 1px solid var(--line); display: grid; gap: 8px; }
+  .flow span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 900; }
+  .flow p { color: var(--ink-2); }
+  @media (max-width: 760px) { .flow { grid-template-columns: 1fr; } }
+</style>
