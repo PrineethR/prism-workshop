@@ -6,6 +6,8 @@ files to take away) and My plan (a wall to mix and match all of it). The core te
 
 Source: *(Cohort 3) Prism: Workshop ME.pdf*, the Monsoon Edition deck (215 slides).
 
+Live: https://prineethr.com/prism-workshop/ (GitHub Pages, deployed from `main` by `.github/workflows/deploy.yml`).
+
 ## Run it
 
 ```bash
