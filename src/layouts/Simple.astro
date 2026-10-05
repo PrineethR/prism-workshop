@@ -1,0 +1,105 @@
+---
+import '../styles/global.css';
+import { u } from '../lib/url';
+
+// The simple kit: three tabs and nothing else. The full kit (guide, catalog,
+// copilot) lives behind "DIY kit" for people who want to build their own.
+// `full`: the page fills the window below the header and has no footer (the wall).
+interface Props { title: string; description?: string; active: 'reference' | 'wall' | 'workshop'; full?: boolean }
+const { title, description = 'Run a Prism design thinking workshop: a ready-made one-day or two-day format, a planning wall and the reference files.', active, full = false } = Astro.props;
+
+const tabs = [
+  { id: 'reference', href: '', label: 'Reference', n: '1' },
+  { id: 'wall', href: 'wall/', label: 'Planning wall', n: '2' },
+  { id: 'workshop', href: 'workshop/', label: 'Workshop', n: '3' },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>{`${title} · Prism Workshop Kit`}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={u('favicon.svg')} type="image/svg+xml" />
+  </head>
+  <body class:list={['simple', { full }]}>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="s-head">
+      <div class="wrap s-row">
+        <a class="brand" href={u('/')} aria-label="Prism Workshop Kit, reference">
+          <span class="word">PRISM</span>
+          <span class="sub">Workshop Kit</span>
+        </a>
+        <nav class="tabs" aria-label="Main">
+          {tabs.map((t) => (
+            <a href={u(t.href)} aria-current={active === t.id ? 'page' : undefined}><span class="tab-n" aria-hidden="true">{t.n}</span>{t.label}</a>
+          ))}
+        </nav>
+        <a class="diy" href={u('diy/')} title="The full kit: guide, catalog and copilot, for building your own format">DIY kit <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+    <main id="main"><slot /></main>
+    {!full && <footer class="s-foot">
+      <div class="wrap s-foot-row">
+        <p class="small muted"><span class="word small-word">PRISM</span> Made by the Axis design team. Built from the Monsoon Edition deck, Cohort 3.</p>
+        <p class="small muted">Want to design your own format? <a href={u('diy/')}>Open the DIY kit</a>.</p>
+      </div>
+    </footer>}
+
+    <style>
+      .skip { position: absolute; left: -9999px; }
+      .skip:focus { left: 16px; top: 12px; z-index: 100; background: var(--surface); padding: 8px 12px; border-radius: 8px; }
+
+      .s-head {
+        position: sticky; top: 0; z-index: 50; height: var(--head-h);
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
+        backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+        border-bottom: 1px solid var(--line);
+      }
+      .s-row { height: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+      .brand { display: flex; align-items: baseline; gap: 10px; text-decoration: none; }
+      .word { font-weight: 900; font-style: italic; color: var(--accent); font-size: 1.45rem; letter-spacing: -0.02em; }
+      .small-word { font-size: 1rem; margin-right: 6px; }
+      .brand .sub { font-size: 0.85rem; color: var(--ink-2); padding-left: 10px; border-left: 1px solid var(--line); }
+
+      .tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; }
+      .tabs a {
+        display: inline-flex; align-items: center; gap: 8px; padding: 7px 16px 7px 8px; border-radius: 999px;
+        text-decoration: none; font-weight: 700; font-size: 0.92rem; color: var(--ink-2); white-space: nowrap;
+        transition: color var(--t-fast) var(--ease), background var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease);
+      }
+      .tabs .tab-n {
+        width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+        font-size: 0.72rem; font-weight: 900; background: var(--line-2); color: var(--ink-3);
+        transition: background var(--t-base) var(--ease), color var(--t-base) var(--ease);
+      }
+      .tabs a:hover { color: var(--accent); }
+      .tabs a[aria-current='page'] { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+      .tabs a[aria-current='page'] .tab-n { background: var(--accent); color: var(--accent-ink); }
+
+      .diy {
+        justify-self: end; font-size: 0.85rem; font-weight: 700; color: var(--ink-3); text-decoration: none;
+        padding: 6px 12px; border: 1px dashed var(--line); border-radius: 999px;
+        transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+      }
+      .diy:hover { color: var(--accent); border-color: var(--pink-mid); }
+
+      /* Narrow: brand and DIY on the first row, the tabs on their own row below. */
+      @media (max-width: 860px) {
+        :global(body.simple) { --head-h: 112px; }
+        .s-row { grid-template-columns: 1fr auto; grid-template-rows: 52px auto; row-gap: 0; align-content: center; }
+        .tabs { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; }
+        .tabs a { flex: 1; justify-content: center; padding: 7px 8px; font-size: 0.85rem; }
+        .brand .sub { display: none; }
+      }
+      @media (max-width: 420px) {
+        .tabs .tab-n { display: none; }
+      }
+
+      .s-foot { border-top: 1px solid var(--line); padding-block: 28px 40px; margin-top: 40px; }
+      .s-foot-row { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: baseline; }
+    </style>
+  </body>
+</html>

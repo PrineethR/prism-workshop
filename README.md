@@ -20,6 +20,10 @@ No backend. The copilot runs in the browser, and plans are saved in the browser'
 
 | Path | What it holds |
 | --- | --- |
+| `src/pages/index.astro`, `wall.astro`, `workshop.astro` | The simple kit's three tabs: Reference, Planning wall, Workshop. Layout in `src/layouts/Simple.astro`. |
+| `src/data/formula.ts` | The ready-made one-day and two-day workshops (fixed copilot answers). |
+| `src/pages/diy.astro` | Home of the DIY kit (the full v2 site). Its other pages keep their URLs. |
+| `src/components/Wall.astro` | The planning wall markup and styles, shared by the Planning wall tab and My plan. |
 | `src/data/phases.ts` | The Double Diamond phases: tagline, why/what/how, cheat sheet, quote. Plus the module pattern every phase follows. |
 | `src/data/catalog.ts` | The item type, labels and lookups. The items themselves live in `src/data/items/`. |
 | `src/data/items/*.ts` | Activities, methods, cases and templates (141 in all). Deck items keep their `slides`; v2 additions carry a `source`, and cases added outside the deck are marked `verify: true`. |

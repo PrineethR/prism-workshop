@@ -13,6 +13,7 @@ import { items, slugOf, kindLabel, roleLabel, find, type Item } from '../data/ca
 import { phases, phaseById, type PhaseId } from '../data/phases';
 import { kit, perspectiveCards } from '../data/kit';
 import { buildPlan, defaults, fmtClock, type Answers } from './copilot/engine';
+import { formulaAnswers } from '../data/formula';
 
 const KEY = 'prism.board.v1';
 const COPILOT_KEY = 'prism.copilot.v2';
@@ -62,11 +63,14 @@ type NoteColour = 'yellow' | 'pink' | 'lilac' | 'white';
 const COLOURS: NoteColour[] = ['yellow', 'pink', 'lilac', 'white'];
 type ItemNode = { id: string; t: 'item'; x: number; y: number; ref: string; min?: number };
 type NoteNode = { id: string; t: 'note'; x: number; y: number; w: number; h: number; text: string; c: NoteColour };
-type FrameNode = { id: string; t: 'frame'; x: number; y: number; w: number; h: number; text: string };
+// `at`: a fixed start time ("09:30"). Frames without one start when the block to their left ends.
+type FrameNode = { id: string; t: 'frame'; x: number; y: number; w: number; h: number; text: string; at?: string };
 type TextNode = { id: string; t: 'text'; x: number; y: number; w: number; text: string };
 type BNode = ItemNode | NoteNode | FrameNode | TextNode;
 interface View { x: number; y: number; z: number }
-interface Saved { nodes: BNode[]; view: View }
+// v2: frame times are live (`at` plus the row), not typed into titles.
+interface Saved { nodes: BNode[]; view: View; v?: number }
+const VERSION = 2;
 
 /** Minutes a node adds to its frame. Notes count if they say “10 min”. */
 function minutesOf(n: BNode): number {
@@ -107,7 +111,7 @@ export function initBoard() {
   let last = JSON.stringify(nodes);
   const past: string[] = [];
   let future: string[] = [];
-  const save = () => store.set(KEY, { nodes, view });
+  const save = () => store.set(KEY, { nodes, view, v: VERSION });
   let saveT = 0;
   const saveSoon = () => { clearTimeout(saveT); saveT = window.setTimeout(save, 250); };
   function commit() {
@@ -187,6 +191,67 @@ export function initBoard() {
     return hit;
   }
   const inside = (f: FrameNode) => nodes.filter((n) => owner(n) === f);
+  const frameMinutes = (f: FrameNode) => inside(f).reduce((s, n) => s + minutesOf(n), 0);
+
+  /** Frames side by side make a row: the running order of one day, left to right.
+   *  Loose timed notes and cards between two frames of a row (a coffee break) belong to it too. */
+  function rows(): BNode[][] {
+    const frames = nodes.filter((n): n is FrameNode => n.t === 'frame');
+    const up = frames.map((_, i) => i);
+    const top = (i: number): number => (up[i] === i ? i : (up[i] = top(up[i])));
+    for (let i = 0; i < frames.length; i++) for (let j = i + 1; j < frames.length; j++) {
+      const a = frames[i], b = frames[j];
+      const overlap = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+      if (overlap > Math.min(a.h, b.h) / 2) up[top(i)] = top(j);
+    }
+    const groups = new Map<number, FrameNode[]>();
+    frames.forEach((f, i) => groups.set(top(i), [...(groups.get(top(i)) ?? []), f]));
+    const taken = new Set<BNode>();
+    return [...groups.values()].map((fs) => {
+      const x0 = Math.min(...fs.map((f) => f.x)), x1 = Math.max(...fs.map((f) => f.x + f.w));
+      const y0 = Math.min(...fs.map((f) => f.y)), y1 = Math.max(...fs.map((f) => f.y + f.h));
+      const between = nodes.filter((n) => {
+        if ((n.t !== 'note' && n.t !== 'item') || taken.has(n) || owner(n) || !minutesOf(n)) return false;
+        const s = size(n), cx = n.x + s.w / 2, cy = n.y + s.h / 2;
+        return cx > x0 && cx < x1 && cy > y0 && cy < y1;
+      });
+      between.forEach((n) => taken.add(n));
+      return [...fs, ...between].sort((a, b) => a.x - b.x);
+    });
+  }
+  const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+  /** Start and end of every block in a row that has a start time. A frame with `at` sets the clock;
+   *  everything after it follows on, so adding, moving or retiming a block moves the rest. */
+  function timeline() {
+    const times = new Map<string, { start: number; end: number }>();
+    for (const row of rows()) {
+      let clock: number | undefined;
+      for (const n of row) {
+        if (n.t === 'frame' && n.at) clock = toMin(n.at);
+        if (clock === undefined) continue;
+        const m = n.t === 'frame' ? frameMinutes(n) : minutesOf(n);
+        times.set(n.id, { start: clock, end: clock + m });
+        clock += m;
+      }
+    }
+    return times;
+  }
+  /** Boards from before v2 had times typed into titles. Lift them out: keep the first frame of each
+   *  row as the fixed start, and let the rest follow on. */
+  function migrate(list: BNode[]) {
+    const stamp = /^(\d{1,2}):(\d{2})\s+/;
+    const before = nodes; nodes = list;
+    for (const n of list) {
+      if (n.t === 'frame') {
+        const m = n.text.match(stamp);
+        if (m) { n.at = `${m[1].padStart(2, '0')}:${m[2]}`; n.text = n.text.replace(stamp, ''); }
+      }
+      if (n.t === 'note' && !owner(n) && stamp.test(n.text)) n.text = n.text.replace(stamp, '');
+    }
+    for (const row of rows()) row.filter((n): n is FrameNode => n.t === 'frame').slice(1).forEach((f) => { delete f.at; });
+    nodes = before;
+    return list;
+  }
   /** To the right of everything already on the wall, so a new layout never lands on top of work. */
   function freeX() { return nodes.length ? snap(bounds(nodes).x + bounds(nodes).w + 120) : 0; }
 
@@ -211,7 +276,7 @@ export function initBoard() {
     } else if (n.t === 'note') {
       el.classList.add(`c-${n.c}`);
       el.setAttribute('aria-label', 'Sticky note');
-      el.innerHTML = '<div class="nt-text" data-text spellcheck="true"></div><span class="grip" data-resize aria-hidden="true"></span>';
+      el.innerHTML = '<span class="nt-clock" data-clock></span><div class="nt-text" data-text spellcheck="true"></div><span class="grip" data-resize aria-hidden="true"></span>';
       $('[data-text]', el).textContent = n.text;
     } else if (n.t === 'text') {
       el.setAttribute('aria-label', 'Heading');
@@ -221,6 +286,7 @@ export function initBoard() {
       el.setAttribute('aria-label', `Frame: ${n.text}`);
       el.innerHTML = `
         <div class="fr-head" data-handle>
+          <span class="fr-clock" data-clock></span>
           <div class="fr-title" data-text spellcheck="true"></div>
           <span class="fr-sum" data-sum></span>
         </div>
@@ -265,8 +331,23 @@ export function initBoard() {
       const inn = inside(n);
       const m = inn.reduce((s, x) => s + minutesOf(x), 0);
       total += m;
-      const sum = els.get(n.id)?.querySelector('[data-sum]');
-      if (sum) sum.textContent = inn.length ? `${m ? fmtMin(m) : 'No timings'} · ${inn.length} ${inn.length === 1 ? 'piece' : 'pieces'}` : 'Drop pieces in';
+      const sum = els.get(n.id)?.querySelector<HTMLElement>('[data-sum]');
+      if (sum) {
+        sum.textContent = inn.length ? (m ? fmtMin(m) : 'No timings') : 'Drop pieces in';
+        sum.title = `${inn.length} ${inn.length === 1 ? 'piece' : 'pieces'}`;
+      }
+      const title = els.get(n.id)?.querySelector<HTMLElement>('.fr-title');
+      if (title && !editing) title.title = n.text;
+    }
+    // Clocks: every block in a timed row shows when it starts.
+    const times = timeline();
+    for (const n of nodes) {
+      const c = els.get(n.id)?.querySelector<HTMLElement>('[data-clock]');
+      if (!c) continue;
+      const t = times.get(n.id);
+      c.textContent = t ? fmtClock(t.start) : '';
+      c.title = t ? `${fmtClock(t.start)}–${fmtClock(t.end)}${n.t === 'frame' && n.at ? ' · fixed start' : ''}` : '';
+      c.classList.toggle('fixed', n.t === 'frame' && !!n.at);
     }
     const loose = nodes.filter((n) => n.t !== 'frame' && !owner(n));
     const looseMin = loose.reduce((s, n) => s + minutesOf(n), 0);
@@ -286,8 +367,17 @@ export function initBoard() {
   function renderBar() {
     const chosen = nodes.filter((n) => sel.has(n.id));
     if (!chosen.length || editing) { bar.hidden = true; return; }
+    if (bar.contains(document.activeElement) && !bar.hidden) { placeBar(); return; } // don't swap the time field out from under the cursor
     const one = chosen.length === 1 ? chosen[0] : null;
     let html = '';
+    if (!one) {
+      // Several at once: how many, how long, and the one move that matters, grouping them into a block.
+      const pieces = new Set<BNode>(chosen.filter((n) => n.t !== 'frame'));
+      chosen.forEach((n) => { if (n.t === 'frame') inside(n).forEach((x) => pieces.add(x)); });
+      const m = [...pieces].reduce((s, n) => s + minutesOf(n), 0);
+      html += `<span class="sb-count">${chosen.length} selected${m ? ` · ${fmtMin(m)}` : ''}</span><span class="sb-sep"></span>`;
+      if (chosen.some((n) => n.t !== 'frame')) html += '<button data-wrap title="Put a frame around them">Frame them</button>';
+    }
     if (one?.t === 'note') {
       html += `<div class="sb-swatches" role="group" aria-label="Colour">${COLOURS.map((c) => `<button class="sw c-${c}" data-colour="${c}" aria-label="${c}" aria-pressed="${one.c === c}"></button>`).join('')}</div><span class="sb-sep"></span>`;
     }
@@ -298,7 +388,13 @@ export function initBoard() {
       </div>${one.min !== undefined ? '<button data-reset>Reset</button>' : ''}<span class="sb-sep"></span>`;
     }
     if (one?.t === 'item' && pieceByRef.get(one.ref)) html += `<a href="${pieceByRef.get(one.ref)!.href}" target="_blank" rel="noopener">Open ↗</a>`;
-    if (one?.t === 'frame') html += '<button data-tidy>Tidy</button>';
+    if (one?.t === 'frame') {
+      const t = timeline().get(one.id);
+      html += `<label class="sb-time" title="${one.at ? 'Fixed start. Blocks to the right follow on from it.' : 'Follows on from the block to its left. Set a time to fix it.'}">Starts
+        <input type="time" data-at value="${one.at ?? (t ? fmtClock(t.start) : '')}" /></label>
+        ${one.at ? '<button data-unpin title="Start when the block to its left ends">Follow on</button>' : ''}<span class="sb-sep"></span>
+        <button data-tidy>Tidy</button>`;
+    }
     if (one && one.t !== 'item') html += '<button data-edit>Edit</button>';
     html += `<button data-dup>Duplicate</button><button data-del class="danger">Delete${chosen.length > 1 ? ` ${chosen.length}` : ''}</button>`;
     bar.innerHTML = html;
@@ -315,7 +411,9 @@ export function initBoard() {
     const bw = bar.offsetWidth;
     const left = clamp((x0 + x1) / 2 - sr.left - bw / 2, 8, sr.width - bw - 8);
     const top = y0 - sr.top - bar.offsetHeight - 10;
-    bar.style.transform = `translate(${left}px, ${Math.max(8, top)}px)`;
+    // Stay clear of the toolbar along the top of the wall.
+    const tb = $('.toolbar', root).getBoundingClientRect();
+    bar.style.transform = `translate(${left}px, ${Math.max(tb.bottom - sr.top + 8, top)}px)`;
   }
   bar.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('button');
@@ -333,11 +431,24 @@ export function initBoard() {
       place(one); commit();
     } else if (b.hasAttribute('data-reset') && one?.t === 'item') {
       delete one.min; place(one); commit();
+    } else if (b.hasAttribute('data-wrap')) wrap(chosen.filter((n) => n.t !== 'frame'));
+    else if (b.hasAttribute('data-unpin') && one?.t === 'frame') {
+      delete one.at; commit(); renderBar();
     } else if (b.hasAttribute('data-tidy') && one?.t === 'frame') tidy(one);
     else if (b.hasAttribute('data-edit') && one) startEdit(one.id);
     else if (b.hasAttribute('data-dup')) duplicate();
     else if (b.hasAttribute('data-del')) remove();
   });
+
+  bar.addEventListener('change', (e) => {
+    const input = (e.target as HTMLElement).closest<HTMLInputElement>('[data-at]');
+    const one = nodes.find((n) => sel.has(n.id));
+    if (!input || one?.t !== 'frame') return;
+    if (input.value) one.at = input.value; else delete one.at;
+    commit();
+  });
+  bar.addEventListener('focusout', () => requestAnimationFrame(() => { if (!bar.contains(document.activeElement)) renderBar(); }));
+  bar.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLElement).blur(); });
 
   // ── Operations ───────────────────────────────────────────────────────────
   function add(n: BNode, opts: { select?: boolean; edit?: boolean } = {}) {
@@ -354,6 +465,25 @@ export function initBoard() {
     [...before, ...(id ? [id] : [])].forEach((x) => { const n = nodes.find((m) => m.id === x); if (n) place(n); });
     renderBar();
   }
+  /** Pieces the box touches are selected. A frame only when the box takes in all of it,
+   *  so a box drawn inside a frame picks its cards, not the frame. */
+  function boxSelect(x0: number, y0: number, x1: number, y1: number, base: Set<string>) {
+    sel.clear(); base.forEach((id) => sel.add(id));
+    for (const n of nodes) {
+      const s = size(n);
+      const hit = n.t === 'frame'
+        ? n.x >= x0 && n.y >= y0 && n.x + s.w <= x1 && n.y + s.h <= y1
+        : n.x < x1 && n.x + s.w > x0 && n.y < y1 && n.y + s.h > y0;
+      if (hit) sel.add(n.id);
+    }
+    els.forEach((el, id) => el.classList.toggle('sel', sel.has(id)));
+  }
+  /** Dragging the wall used to move around it. Say once what it does now, and how to move around. */
+  function tipOnce() {
+    if (store.get('prism.board.tip', false)) return;
+    store.set('prism.board.tip', true);
+    toast('Drag across the wall to select several. Shift-click adds one. To move around, scroll or hold space.', false, 6000);
+  }
   function toggleSel(id: string) {
     sel.has(id) ? sel.delete(id) : sel.add(id);
     const n = nodes.find((m) => m.id === id); if (n) place(n);
@@ -368,12 +498,47 @@ export function initBoard() {
     commit();
     toast(`Deleted ${n === 1 ? 'one piece' : `${n} pieces`}`, true);
   }
+  const copyOf = (n: BNode, dx: number, dy: number): BNode => {
+    const c = { ...structuredClone(n), id: uid(), x: n.x + dx, y: n.y + dy };
+    if (c.t === 'frame') delete c.at; // a copy follows on; it doesn't share the original's fixed time
+    return c;
+  };
   function duplicate() {
-    const copies = nodes.filter((n) => sel.has(n.id)).map((n) => ({ ...structuredClone(n), id: uid(), x: n.x + 24, y: n.y + 24 }));
+    const chosen = nodes.filter((n) => sel.has(n.id));
+    if (chosen.length === 1 && chosen[0].t === 'frame') { insertAfter(chosen[0]); return; }
+    const all = new Set(chosen);
+    chosen.forEach((n) => { if (n.t === 'frame') inside(n).forEach((x) => all.add(x)); });
+    const copies = [...all].map((n) => copyOf(n, 24, 24));
     if (!copies.length) return;
     sel.forEach((id) => { sel.delete(id); const n = nodes.find((m) => m.id === id); if (n) place(n); });
     copies.forEach((c) => { nodes.push(c); draw(c); sel.add(c.id); place(c); });
     commit();
+  }
+  /** Duplicating one frame adds the copy as the next block: everything to its right in the row
+   *  moves along to make room, and the times after it shift by the copy's length. */
+  function insertAfter(f: FrameNode) {
+    const shift = f.w + 40;
+    const kids = inside(f);
+    const row = rows().find((r) => r.includes(f)) ?? [f];
+    const movers = new Set<BNode>();
+    for (const n of row) if (n !== f && n.x > f.x) { movers.add(n); if (n.t === 'frame') inside(n).forEach((x) => movers.add(x)); }
+    movers.forEach((n) => { n.x += shift; place(n); });
+    const copy = copyOf(f, shift, 0) as FrameNode;
+    const made = [copy, ...kids.map((k) => copyOf(k, shift, 0))];
+    made.forEach((n) => { nodes.push(n); draw(n); });
+    selectOnly(copy.id);
+    commit();
+    toast(movers.size ? 'Added a copy as the next block. Everything after it moved along.' : 'Added a copy as the next block.');
+  }
+  /** A new frame around the selected pieces: the quickest way from loose cards to a block. */
+  function wrap(list: BNode[]) {
+    if (!list.length) return;
+    const b = bounds(list);
+    const f: FrameNode = { id: uid(), t: 'frame', x: snap(b.x - 20), y: snap(b.y - 64), w: snap(b.w + 40), h: snap(b.h + 84), text: 'New block' };
+    nodes.push(f); draw(f);
+    selectOnly(f.id);
+    commit();
+    startEdit(f.id);
   }
   function tidy(f: FrameNode) {
     const inn = inside(f).sort((a, b) => a.y - b.y || a.x - b.x);
@@ -441,7 +606,12 @@ export function initBoard() {
   type Drag =
     | { mode: 'move'; sx: number; sy: number; moved: boolean; start: Map<BNode, { x: number; y: number }>; hit: BNode }
     | { mode: 'resize'; sx: number; sy: number; n: NoteNode | FrameNode; w: number; h: number }
-    | { mode: 'pan'; sx: number; sy: number; vx: number; vy: number; moved: boolean };
+    | { mode: 'pan'; sx: number; sy: number; vx: number; vy: number; moved: boolean; tap: boolean }
+    | { mode: 'box'; sx: number; sy: number; moved: boolean; base: Set<string> };
+  const boxEl = document.createElement('div');
+  boxEl.className = 'marquee';
+  boxEl.hidden = true;
+  stage.append(boxEl);
   let drag: Drag | null = null;
   let spaceDown = false;
   const touches = new Map<number, { x: number; y: number }>();
@@ -465,13 +635,29 @@ export function initBoard() {
     const n = nodeEl ? nodes.find((x) => x.id === nodeEl.dataset.id) : undefined;
     if (n && editing === n.id) return; // typing: let the caret work
     if (editing) endEdit();
-    // A frame's body acts like the wall: it pans. Its title bar and grip move and resize it.
-    const frameBody = n?.t === 'frame' && !t.closest('[data-handle]') && !t.closest('[data-resize]');
-    if (!n || frameBody || spaceDown || e.button === 1) {
-      e.preventDefault(); // no text selection while panning
-      if (!e.shiftKey && !spaceDown && e.button !== 1) selectOnly(null);
-      drag = { mode: 'pan', sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false };
+    const additive = e.shiftKey || e.metaKey || e.ctrlKey;
+    // Space or the middle button pans from anywhere, over cards too.
+    if (spaceDown || e.button === 1) {
+      e.preventDefault();
+      drag = { mode: 'pan', sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false, tap: false };
       stage.classList.add('panning');
+      stage.setPointerCapture(e.pointerId);
+      return;
+    }
+    // A frame's body is wall: dragging there selects what's inside. Its title bar and grip move and resize it.
+    const frameBody = n?.t === 'frame' && !t.closest('[data-handle]') && !t.closest('[data-resize]');
+    if (!n || frameBody) {
+      e.preventDefault(); // no text selection
+      stage.focus({ preventScroll: true });
+      if (e.pointerType === 'touch') {
+        // One finger on the wall moves around; a tap clears the selection.
+        drag = { mode: 'pan', sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false, tap: true };
+        stage.classList.add('panning');
+      } else {
+        // Mouse and pen draw a selection box. Shift (or ⌘) adds to what's already selected.
+        if (!additive) selectOnly(null);
+        drag = { mode: 'box', sx: e.clientX, sy: e.clientY, moved: false, base: new Set(sel) };
+      }
       stage.setPointerCapture(e.pointerId);
       return;
     }
@@ -482,8 +668,9 @@ export function initBoard() {
       stage.setPointerCapture(e.pointerId);
       return;
     }
-    if (e.shiftKey) { toggleSel(n.id); if (!sel.has(n.id)) return; }
+    if (additive) { toggleSel(n.id); if (!sel.has(n.id)) return; }
     else if (!sel.has(n.id)) selectOnly(n.id);
+    tipOnce();
     nodeEl!.focus({ preventScroll: true });
     // Moving a frame carries what's inside it.
     const moving = new Set<BNode>(nodes.filter((x) => sel.has(x.id)));
@@ -504,6 +691,16 @@ export function initBoard() {
     if (drag.mode === 'pan') {
       if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
       view.x = drag.vx + dx; view.y = drag.vy + dy; applyView();
+    } else if (drag.mode === 'box') {
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+      if (!drag.moved) { drag.moved = true; boxEl.hidden = false; bar.hidden = true; root.classList.add('boxing'); }
+      const sr = stage.getBoundingClientRect();
+      const l = Math.min(e.clientX, drag.sx), tp = Math.min(e.clientY, drag.sy);
+      const w = Math.abs(dx), h = Math.abs(dy);
+      boxEl.style.transform = `translate(${l - sr.left}px, ${tp - sr.top}px)`;
+      boxEl.style.width = `${w}px`; boxEl.style.height = `${h}px`;
+      const a = toWorld(l, tp), b = toWorld(l + w, tp + h);
+      boxSelect(a.x, a.y, b.x, b.y, drag.base);
     } else if (drag.mode === 'move') {
       if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
       if (!drag.moved) { drag.moved = true; drag.start.forEach((_, n) => bringToFront(n)); bar.hidden = true; root.classList.add('dragging'); }
@@ -523,8 +720,13 @@ export function initBoard() {
     const d = drag; drag = null;
     stage.classList.remove('panning');
     root.classList.remove('dragging');
-    if (d.mode === 'pan') { save(); return; }
-    if (d.mode === 'move' && !d.moved) return;
+    if (d.mode === 'pan') { if (d.tap && !d.moved) selectOnly(null); save(); return; }
+    if (d.mode === 'box') { boxEl.hidden = true; root.classList.remove('boxing'); renderBar(); tipOnce(); return; }
+    if (d.mode === 'move' && !d.moved) {
+      // A plain click on one of several selected pieces picks just that one.
+      if (sel.size > 1 && !(e.shiftKey || e.metaKey || e.ctrlKey)) selectOnly(d.hit.id);
+      return;
+    }
     commit();
   };
   stage.addEventListener('pointerup', endPointer);
@@ -747,7 +949,7 @@ export function initBoard() {
   }
 
   type Entry = { ref: string; min?: number } | { note: string; c?: NoteColour };
-  type Column = { frame: string; entries: Entry[] } | { note: string; c: NoteColour };
+  type Column = { frame: string; at?: string; entries: Entry[] } | { note: string; c: NoteColour };
   /** Rows of frames, left to right, placed to the right of what's already on the wall.
    *  Each piece is drawn as it's placed so its real height sets the next one's position. */
   function layout(rows: { heading: string; columns: Column[] }[], label: string) {
@@ -764,7 +966,7 @@ export function initBoard() {
           put({ id: uid(), t: 'note', x, y, w: 160, h: 128, text: col.note, c: col.c });
           x += 184; tallest = Math.max(tallest, 128); continue;
         }
-        const f = put({ id: uid(), t: 'frame', x, y, w: CARD_W + 40, h: 200, text: col.frame }) as FrameNode;
+        const f = put({ id: uid(), t: 'frame', x, y, w: CARD_W + 40, h: 200, text: col.frame, ...(col.at ? { at: col.at } : {}) }) as FrameNode;
         let cy = y + 56;
         for (const e of col.entries) {
           const n = 'ref' in e
@@ -792,22 +994,26 @@ export function initBoard() {
   function startCopilot() {
     const a = copilotAnswers();
     if (!a) return;
-    const answers: Answers = { ...defaults, ...a };
+    startPlan({ ...defaults, ...a }, 'from the copilot');
+  }
+  /** Lay out a whole agenda: every block a frame, breaks and lunch as notes. */
+  function startPlan(answers: Answers, from: string) {
     const plan = buildPlan(answers);
     layout(plan.days.map((day, d) => ({
       heading: plan.days.length > 1 ? `${answers.name} · Day ${d + 1}` : answers.name,
-      columns: day.map((b): Column => {
-        const clock = b.start !== undefined ? `${fmtClock(b.start)} ` : '';
-        if (b.kind === 'break' || b.kind === 'lunch') return { note: `${clock}${b.title}\n${b.minutes} min`, c: b.kind === 'lunch' ? 'pink' : 'yellow' };
+      // Only the day's first block gets a fixed time. The rest follow on, so they move when you edit.
+      columns: day.map((b, i): Column => {
+        if (b.kind === 'break' || b.kind === 'lunch') return { note: `${b.title}\n${b.minutes} min`, c: b.kind === 'lunch' ? 'pink' : 'yellow' };
         return {
-          frame: `${clock}${b.title}`,
+          frame: b.title,
+          at: i === 0 && b.start !== undefined ? fmtClock(b.start) : undefined,
           entries: b.parts.map((p): Entry => {
             const it = p.item ? find(p.item) : undefined;
             return it ? { ref: slugOf(it), min: p.minutes } : { note: `${p.label}\n${p.minutes} min`, c: p.type === 'cases' ? 'lilac' : 'white' };
           }),
         };
       }),
-    })), `Brought in “${answers.name}” from the copilot.`);
+    })), `Brought in “${answers.name}” ${from}.`);
   }
   function startPins() {
     const refs = pinned();
@@ -824,26 +1030,31 @@ export function initBoard() {
     const kind = b.dataset.start;
     if (kind === 'diamond') startDiamond();
     else if (kind === 'copilot') startCopilot();
+    else if (kind === 'formula-day' || kind === 'formula-two') startPlan(formulaAnswers(kind === 'formula-day' ? 'day' : 'two'), 'as the formula has it');
     else if (kind === 'pins') startPins();
     else if (kind === 'blank') { blankStart = true; afterChange(); if (root.classList.contains('lib-closed')) setLib(true); search.focus(); }
   });
 
   // ── More: copy as a list, save and open a copy, clear ────────────────────
   function asText() {
-    const frames = nodes.filter((n): n is FrameNode => n.t === 'frame')
-      .sort((a, b) => Math.round(a.y / 400) - Math.round(b.y / 400) || a.x - b.x);
+    const times = timeline();
+    const clock = (n: BNode) => { const t = times.get(n.id); return t ? `${fmtClock(t.start)} ` : ''; };
     const label = (n: BNode) => {
       if (n.t === 'item') { const p = pieceByRef.get(n.ref); const m = minutesOf(n); return `- ${[p?.title ?? 'Missing piece', p?.meta, m ? `${m} min` : ''].filter(Boolean).join(' · ')}`; }
       return n.t === 'note' && n.text.trim() ? `- ${n.text.trim().replace(/\n+/g, ' · ')}` : '';
     };
     const used = new Set<BNode>();
     const out: string[] = [];
-    for (const f of frames) {
-      const inn = inside(f).sort((a, b) => a.y - b.y || a.x - b.x);
-      inn.forEach((n) => used.add(n));
-      const m = inn.reduce((s, n) => s + minutesOf(n), 0);
-      out.push(`${f.text}${m ? ` (${fmtMin(m)})` : ''}`, ...inn.map(label).filter(Boolean), '');
+    const ordered = rows().sort((a, b) => Math.min(...a.map((n) => n.y)) - Math.min(...b.map((n) => n.y)));
+    for (const row of ordered) for (const n of row) {
+      used.add(n);
+      if (n.t !== 'frame') { out.push(`${clock(n)}${n.t === 'note' ? n.text.trim().replace(/\n+/g, ' · ') : label(n).slice(2)}`, ''); continue; }
+      const inn = inside(n).sort((a, b) => a.y - b.y || a.x - b.x);
+      inn.forEach((x) => used.add(x));
+      const m = frameMinutes(n);
+      out.push(`${clock(n)}${n.text}${m ? ` (${fmtMin(m)})` : ''}`, ...inn.map(label).filter(Boolean), '');
     }
+    const frames = nodes.filter((n) => n.t === 'frame');
     const loose = nodes.filter((n) => n.t !== 'frame' && !used.has(n) && n.t !== 'text').sort((a, b) => a.y - b.y || a.x - b.x);
     const looseLines = loose.map(label).filter(Boolean);
     if (looseLines.length) out.push(frames.length ? 'Not in a frame' : 'On the wall', ...looseLines);
@@ -865,7 +1076,7 @@ export function initBoard() {
         area.value = text; dlg.showModal(); area.select();
       }
     } else if (what === 'save') {
-      const blob = new Blob([JSON.stringify({ prism: 'board', v: 1, nodes }, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify({ prism: 'board', v: VERSION, nodes }, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'prism-plan.json'; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -887,7 +1098,7 @@ export function initBoard() {
       const data = JSON.parse(await file.text());
       if (data?.prism !== 'board' || !Array.isArray(data.nodes)) throw new Error('not a board');
       const clean = (data.nodes as BNode[]).filter((n) => n && typeof n.id === 'string' && ['item', 'note', 'frame', 'text'].includes(n.t) && Number.isFinite(n.x) && Number.isFinite(n.y));
-      nodes = clean; sel.clear(); rebuild(); commit();
+      nodes = (data.v ?? 1) < VERSION ? migrate(clean) : clean; sel.clear(); rebuild(); commit();
       requestAnimationFrame(() => fit());
       toast(`Opened ${file.name}. Undo to go back.`, true);
     } catch { toast('That file isn’t a Prism plan.'); }
@@ -895,11 +1106,11 @@ export function initBoard() {
 
   // ── Toast ────────────────────────────────────────────────────────────────
   let toastT = 0;
-  function toast(msg: string, withUndo = false) {
+  function toast(msg: string, withUndo = false, ms = withUndo ? 5000 : 2600) {
     toastEl.innerHTML = `<span>${esc(msg)}</span>${withUndo ? '<button data-toast-undo>Undo</button>' : ''}`;
     toastEl.classList.add('show');
     clearTimeout(toastT);
-    toastT = window.setTimeout(() => toastEl.classList.remove('show'), withUndo ? 5000 : 2600);
+    toastT = window.setTimeout(() => toastEl.classList.remove('show'), ms);
   }
   toastEl.addEventListener('click', (e) => {
     if ((e.target as HTMLElement).closest('[data-toast-undo]')) { undo(); toastEl.classList.remove('show'); }
@@ -909,10 +1120,19 @@ export function initBoard() {
   // Another tab may have pinned something on a catalog page.
   window.addEventListener('storage', (e) => { if (e.key === PIN_KEY) { renderLib(); refreshStarts(); } });
   window.addEventListener('resize', placeBar);
+  if (saved && (saved.v ?? 1) < VERSION) { nodes = migrate(nodes); last = JSON.stringify(nodes); save(); }
   nodes.forEach(draw);
   renderLib();
   refreshStarts();
   applyView();
   afterChange();
   if (!saved) fit();
+
+  // Arriving from the Workshop tab with ?start=day or ?start=two: lay that formula out once,
+  // then drop the parameter so a reload doesn't add it again.
+  const want = new URLSearchParams(location.search).get('start');
+  if (want === 'day' || want === 'two') {
+    history.replaceState(null, '', location.pathname);
+    startPlan(formulaAnswers(want), 'from the Workshop tab');
+  }
 }

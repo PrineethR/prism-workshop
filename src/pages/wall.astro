@@ -1,0 +1,16 @@
+---
+import Simple from '../layouts/Simple.astro';
+import Wall from '../components/Wall.astro';
+import { u } from '../lib/url';
+
+const starts = [
+  { id: 'formula-day', title: 'The one-day workshop', body: 'The ready-made day, block by block. Breaks and lunch as notes.' },
+  { id: 'formula-two', title: 'The two-day workshop', body: 'Both days of the Monsoon format, one row per day.' },
+  { id: 'diamond', title: 'The Double Diamond', body: 'One frame per phase, holding the tools the deck teaches.' },
+];
+---
+<Simple title="Planning wall" active="wall" full description="A planning wall for a Prism workshop: lay the day out in frames that add up the time.">
+  <Wall starts={starts} eyebrow="Planning wall">
+    <Fragment slot="foot">Saved in this browser as you go. New to this? Start with <a href={u('workshop/')}>the Workshop tab</a>.</Fragment>
+  </Wall>
+</Simple>

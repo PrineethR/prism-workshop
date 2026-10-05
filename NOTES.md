@@ -66,8 +66,19 @@
 - **Three ways in:** the Double Diamond (a frame per phase with the deck's tools), the copilot plan (every block a
   frame, breaks and lunch as notes, times in the titles) and the pieces pinned with “Add to my plan” on catalog
   pages. Each lands to the right of what's already on the wall, so starting points can be mixed and nothing is lost.
+- **Times are live, not typed.** Frames side by side form a row, and a row is a running order. Only the first block
+  has a fixed start (filled clock); every block after it starts when the one to its left ends, and timed notes
+  between frames (breaks, lunch) count. Adding, moving, resizing or retiming a block moves everything after it.
+  Duplicating one frame inserts the copy as the next block and pushes the rest of the row along. Set or clear a
+  fixed start from the frame's “Starts” field. Walls saved before this had times typed into titles; they're lifted
+  out on load (v2).
 - **No connectors.** Left to right is the order; arrows would add a tool without adding meaning.
-- **A frame's body pans the wall; its title bar moves it.** Otherwise a wall full of frames has nowhere to grab.
+- **Dragging the wall selects; it doesn't pan.** With a mouse or pen, a drag on empty wall (or inside a frame's body)
+  draws a selection box, as in FigJam. Cards it touches are picked; a frame only when the box takes in all of it, so a
+  box inside a frame picks its cards. Shift or ⌘ adds. Moving around is scroll, pinch, space-drag or the middle
+  button; on touch, one finger still pans. A one-time tip says so, since this replaced drag-to-pan.
+- **A selection of several shows its count and minutes, and offers “Frame them”**: the quickest way from loose cards
+  to a timed block. A frame's title bar moves it with everything inside.
 - **One wall per browser.** Save a copy / Open a copy moves it to a co-facilitator; Copy as a list gives frame-by-
   frame text for a doc or chat. Sharing a live wall would need a backend.
 
@@ -85,6 +96,25 @@ Feedback: too much to take in on first open. The full v2 kit is kept as is on th
   under the hero, the hero's second button opens My plan, and a quiet reference row closes the page.
 - **Copilot fixes no longer shorten the workshop.** "Give it more time" becomes "Make it two days". The remote warning
   now offers "Spread it over two days" instead of "Make it a half day".
+
+## Decisions (simple kit, 2026-10-05, branch `phase-1`)
+
+Feedback: people should take a ready-made format, not design one. The full site stays, renamed the DIY kit.
+
+- **Three tabs, in this order: Reference, Planning wall, Workshop.** Reference (`/`) is the shelf: the three files,
+  the method on one page, every template, perspective cards, past workshops. Planning wall (`/wall/`) is the same
+  wall as My plan. Workshop (`/workshop/`) is the formula.
+- **The formula is the copilot's engine with fixed answers** (`src/data/formula.ts`): teach the method, the whole
+  diamond, 24 people in a room, the chai example. So it passes the same checks, and changing the answers here
+  changes the Workshop tab and the wall together. Nothing on the Workshop tab can be edited; that's the DIY kit's job.
+- **The Workshop tab walks through four steps:** get ready (the prep countdown, as a checklist saved in the browser),
+  run the day (the agenda, a block per phase that opens to show its parts and why it's there), what teams leave with,
+  follow up. Then what to print and pack. "Put it on the planning wall" opens `/wall/?start=day|two`.
+- **One wall for both kits.** The Planning wall and My plan share storage, so a co-facilitator moving between the
+  two never loses work. The simple wall's starting points are the two formulas and the Double Diamond.
+- **The DIY kit is one click away, not gone.** Its home moved to `/diy/`; guide, catalog, kit, copilot, My plan and
+  the Monsoon page keep their URLs. The header says "DIY kit" and has a link back to the simple kit. Template and
+  method links from the simple kit open DIY catalog pages, which is the intended way in.
 
 ## Rejected
 

@@ -21,7 +21,7 @@ const inReference = reference.some((r) => r.id === active);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <title>{title === 'Prism' ? 'Prism Workshop Kit' : `${title} · Prism`}</title>
+    <title>{title === 'Prism' ? 'Prism DIY kit' : `${title} · Prism DIY kit`}</title>
     <meta name="description" content={description} />
     <link rel="icon" href={u('favicon.svg')} type="image/svg+xml" />
   </head>
@@ -29,9 +29,9 @@ const inReference = reference.some((r) => r.id === active);
     <a class="skip" href="#main">Skip to content</a>
     <header class="site-head">
       <div class="wrap head-row">
-        <a class="brand" href={u('/')} aria-label="Prism Workshop Kit, home">
+        <a class="brand" href={u('diy/')} aria-label="Prism DIY kit, home">
           <span class="word">PRISM</span>
-          <span class="sub">Workshop Kit</span>
+          <span class="sub">DIY kit</span>
         </a>
         <button class="menu-btn" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span class="sr">Menu</span></button>
         <nav id="site-nav" class="site-nav" aria-label="Main">
@@ -45,6 +45,7 @@ const inReference = reference.some((r) => r.id === active);
               ))}
             </div>
           </div>
+          <a class="back" href={u('/')} title="The ready-made one-day and two-day workshops">← Simple kit</a>
           <a class="main-link" href={u('plan/')} aria-current={active === 'plan' ? 'page' : undefined}>My plan</a>
           <a class="cta" href={u('copilot/')} aria-current={active === 'copilot' ? 'page' : undefined}>Copilot</a>
           <span class="nav-ink" aria-hidden="true"></span>
@@ -112,6 +113,8 @@ const inReference = reference.some((r) => r.id === active);
       .site-nav .ref-menu a { display: grid; gap: 1px; padding: 10px 12px; border-radius: 10px; color: var(--ink); }
       .site-nav .ref-menu a span { font-weight: 400; font-size: 0.82rem; color: var(--ink-3); }
       .site-nav .ref-menu a:hover, .site-nav .ref-menu a[aria-current='page'] { background: var(--blush-2); color: var(--accent); }
+      .site-nav a.back { font-weight: 400; color: var(--ink-3); margin-right: 8px; }
+      .site-nav a.back:hover { color: var(--accent); }
       .site-nav a.cta { color: var(--accent-ink); background: var(--accent); margin-left: 6px; }
       .site-nav a.cta:hover { color: var(--accent-ink); box-shadow: var(--shadow); }
       .nav-ink {
@@ -140,6 +143,7 @@ const inReference = reference.some((r) => r.id === active);
         /* On a phone the reference pages are listed under the two tools, smaller. */
         .site-nav { display: flex; }
         .site-nav .main-link { order: 1; }
+        .site-nav a.back { order: 4; margin: 16px 0 0; border-bottom: 0; }
         .site-nav a.cta { order: 2; }
         .ref { order: 3; margin-top: 20px; }
         .ref-btn { padding: 0 4px 6px; pointer-events: none; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; }

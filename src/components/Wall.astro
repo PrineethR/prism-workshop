@@ -1,0 +1,390 @@
+---
+// The planning wall: the drawer of kit pieces, the wall itself and its toolbar.
+// Used by My plan (DIY kit) and the Planning wall tab, which differ only in
+// their starting points. Behaviour lives in src/scripts/board.ts.
+import { phases } from '../data/phases';
+
+interface Start { id: string; title: string; body: string }
+interface Props { starts: Start[]; eyebrow?: string }
+const { starts, eyebrow = 'My plan' } = Astro.props;
+
+const kinds = [
+  ['all', 'All'], ['pinned', 'Pinned'], ['activity', 'Activities'], ['method', 'Methods'],
+  ['case', 'Cases'], ['template', 'Templates'], ['kit', 'Kit'],
+] as const;
+---
+<div class="board" data-board>
+  <aside class="lib" data-lib aria-label="Pieces of the kit">
+    <div class="lib-head">
+      <div>
+        <p class="eyebrow">Pieces</p>
+        <p class="lib-count small muted" data-lib-count></p>
+      </div>
+      <button class="icon-btn" data-lib-close aria-label="Hide pieces">
+        <svg viewBox="0 0 24 24" width="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <label class="lib-search">
+      <svg viewBox="0 0 24 24" width="15" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="search" placeholder="Energiser, HMW, remote…" data-lib-search aria-label="Search pieces" />
+    </label>
+    <div class="lib-kinds" role="group" aria-label="Type">
+      {kinds.map(([k, label]) => (
+        <button data-lib-kind={k} aria-pressed={k === 'all' ? 'true' : 'false'} hidden={k === 'pinned'}>
+          {label}{k === 'pinned' && <span></span>}
+        </button>
+      ))}
+    </div>
+    <select class="lib-phase" data-lib-phase aria-label="Phase">
+      <option value="">Any phase</option>
+      {phases.map((p) => <option value={p.id}>{p.name}</option>)}
+    </select>
+    <ul class="lib-list" data-list></ul>
+    <p class="lib-foot small muted">Drag onto the wall, or click to drop it in the middle.</p>
+  </aside>
+
+  <div class="stage" data-stage tabindex="-1">
+    <div class="world" data-world>
+      <div data-frames></div>
+      <div data-nodes></div>
+    </div>
+
+    <div class="toolbar" role="toolbar" aria-label="Wall tools">
+      <button class="tb" data-lib-toggle aria-expanded="true" aria-label="Pieces">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+        <span>Pieces</span>
+      </button>
+      <span class="tb-sep"></span>
+      <button class="tb" data-add-note title="Sticky note (or double-click the wall)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg>
+        <span>Sticky</span>
+      </button>
+      <button class="tb" data-add-frame title="Frame: adds up the minutes inside it">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v18M17 3v18M3 7h18M3 17h18"/></svg>
+        <span>Frame</span>
+      </button>
+      <button class="tb" data-add-text title="Heading">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>
+        <span>Heading</span>
+      </button>
+      <span class="tb-sep"></span>
+      <button class="tb icon" data-undo aria-label="Undo" title="Undo (⌘Z)" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
+      </button>
+      <button class="tb icon" data-redo aria-label="Redo" title="Redo (⇧⌘Z)" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg>
+      </button>
+      <span class="tb-sep"></span>
+      <div class="tb-menu">
+        <button class="tb" data-menu-btn="start" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Start from</span>
+        </button>
+        <div class="menu right" data-menu="start" hidden>
+          {starts.map((s) => (
+            <button data-start={s.id}><strong>{s.title}</strong><small>{s.body}</small></button>
+          ))}
+          <p class="menu-note small muted">Adds to the right of what’s already on the wall.</p>
+        </div>
+      </div>
+      <div class="tb-menu">
+        <button class="tb icon" data-menu-btn="more" aria-haspopup="true" aria-expanded="false" aria-label="More">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+        </button>
+        <div class="menu right" data-menu="more" hidden>
+          <button data-more="copy"><strong>Copy as a list</strong><small>Frame by frame, with minutes. Paste into a doc or chat.</small></button>
+          <button data-more="save"><strong>Save a copy</strong><small>A file you can send to a co-facilitator.</small></button>
+          <button data-more="open"><strong>Open a copy</strong><small>Replaces this wall. You can undo it.</small></button>
+          <button data-more="clear" class="danger"><strong>Clear the wall</strong></button>
+        </div>
+      </div>
+      <input type="file" accept="application/json,.json" data-file hidden />
+    </div>
+
+    <div class="selbar" data-selbar hidden role="toolbar" aria-label="Selection"></div>
+
+    <div class="empty" data-empty hidden>
+      <div class="empty-card">
+        <p class="eyebrow">{eyebrow}</p>
+        <h1>Your planning wall. <em>Mix and match.</em></h1>
+        <p class="lede">Put any piece of the kit on the wall next to your own sticky notes. Group them in frames and each frame adds up its minutes, so you can see the day take shape.</p>
+        <div class="starts">
+          {starts.map((s) => (
+            <button class="start" data-start={s.id}><strong>{s.title}</strong><small>{s.body}</small></button>
+          ))}
+          <button class="start blank" data-start="blank"><strong>A blank wall</strong><small>Drag pieces in from the left.</small></button>
+        </div>
+        <p class="small muted"><slot name="foot" /></p>
+      </div>
+    </div>
+
+    <div class="tally small" data-tally aria-live="polite"></div>
+    <div class="zoom" role="group" aria-label="Zoom">
+      <button data-zoom-out aria-label="Zoom out">−</button>
+      <button data-fit class="zl" title="Fit everything (⇧1)"><span data-zoom-label>100%</span></button>
+      <button data-zoom-in aria-label="Zoom in">+</button>
+    </div>
+    <div class="toast" data-toast role="status"></div>
+    <dialog class="list-dlg" data-list-dlg aria-label="The wall as a list">
+      <form method="dialog">
+        <p class="eyebrow">The wall as a list</p>
+        <p class="small muted">Your browser didn’t let us copy it. It’s selected below: press ⌘C or Ctrl+C.</p>
+        <textarea readonly rows="14"></textarea>
+        <button class="btn small">Done</button>
+      </form>
+    </dialog>
+  </div>
+</div>
+
+<script>
+  import { initBoard } from '../scripts/board';
+  initBoard();
+</script>
+
+<style is:global>
+  body.full { overflow: hidden; }
+  body.full main { height: calc(100dvh - var(--head-h)); }
+
+  /* ── Frame of the page ────────────────────────────────────────────────── */
+  .board {
+    --lib-w: 300px;
+    position: relative; display: flex; height: 100%; overflow: hidden; border-top: 1px solid var(--line);
+  }
+
+  /* ── Pieces drawer ────────────────────────────────────────────────────── */
+  .lib {
+    flex: none; width: var(--lib-w); display: flex; flex-direction: column; gap: 10px; padding: 16px 12px 0 16px;
+    background: var(--surface); border-right: 1px solid var(--line); z-index: 5;
+    transition: margin-left var(--t-base) var(--ease), visibility 0s linear 0s;
+  }
+  .board.lib-closed .lib { margin-left: calc(-1 * var(--lib-w) - 1px); visibility: hidden; transition: margin-left var(--t-base) var(--ease), visibility 0s linear var(--t-base); }
+  .lib-head { display: flex; justify-content: space-between; align-items: start; }
+  .lib-count { margin-top: 2px; font-size: 0.78rem; }
+  .icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; }
+  .icon-btn:hover { background: var(--blush-2); color: var(--accent); }
+  .lib-search { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-3); margin-right: 4px; }
+  .lib-search:focus-within { border-color: var(--accent); }
+  .lib-search input { border: 0; outline: 0; background: none; width: 100%; font-size: 0.9rem; }
+  .lib-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lib-kinds button {
+    border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: 0.78rem; font-weight: 700; color: var(--ink-2); cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+  }
+  .lib-kinds button:hover { border-color: var(--pink-mid); }
+  .lib-kinds button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .lib-kinds button span { margin-left: 5px; opacity: 0.75; }
+  .lib-phase { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 0.85rem; background: var(--surface); margin-right: 4px; }
+  .lib-list { list-style: none; margin: 0 -4px 0 -8px; padding: 0 4px 12px 0; overflow-y: auto; flex: 1; min-height: 0; scrollbar-width: thin; }
+  .lib-h { font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); padding: 14px 8px 6px; }
+  .lib-none { padding: 24px 8px; color: var(--ink-3); font-size: 0.9rem; }
+  .piece {
+    position: relative; width: 100%; display: grid; grid-template-columns: 40px 1fr 10px; gap: 10px; align-items: center; text-align: left;
+    padding: 6px 8px; border: 0; border-radius: 10px; background: none; cursor: grab; touch-action: pan-y;
+    transition: background var(--t-fast);
+  }
+  .piece:hover, .piece:focus-visible { background: var(--blush-2); }
+  .piece:active { cursor: grabbing; }
+  .pc-media { width: 40px; height: 40px; border-radius: 8px; background: var(--blush-2); overflow: hidden; display: grid; place-items: center; box-shadow: inset 3px 0 0 var(--k, var(--line)); }
+  .pc-media img { width: 100%; height: 100%; object-fit: contain; padding: 5px; }
+  .pc-body { display: grid; min-width: 0; }
+  .pc-title { font-size: 0.88rem; font-weight: 700; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pc-meta { font-size: 0.74rem; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pc-on { font-size: 0.6rem; color: var(--accent); opacity: 0; transition: opacity var(--t-fast); }
+  .piece.on .pc-on { opacity: 1; }
+  .lib-foot { padding: 10px 4px 14px; border-top: 1px solid var(--line-2); font-size: 0.78rem; }
+  /* Kind colours, also used by the drag ghost, which lives outside the board. */
+  .k-activity { --k: var(--burgundy); } .k-method { --k: var(--ultra); } .k-case { --k: var(--pink-mid); }
+  .k-template { --k: var(--ink-3); } .k-kit { --k: var(--wine); } .k-missing { --k: var(--line); }
+
+  /* ── The wall ─────────────────────────────────────────────────────────── */
+  .stage {
+    position: relative; flex: 1; min-width: 0; overflow: hidden; outline: none; touch-action: none; cursor: default; user-select: none; -webkit-user-select: none;
+    background-color: var(--surface-2);
+    background-image: radial-gradient(circle, #e2d3da 1px, transparent 1.3px);
+    background-size: var(--gs, 24px) var(--gs, 24px);
+    background-position: var(--gx, 0) var(--gy, 0);
+  }
+  .stage.panning, .stage.grab, .stage.grab .n { cursor: grabbing; }
+  /* Selection box: drag across the wall to pick up several pieces at once. */
+  .marquee { position: absolute; left: 0; top: 0; z-index: 14; pointer-events: none; border: 1.5px solid var(--accent); background: rgb(151 20 77 / 0.07); border-radius: 4px; }
+  .board.boxing, .board.boxing * { user-select: none; }
+  .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .world > div { position: absolute; left: 0; top: 0; }
+  .board.dragging, .board.dragging * { cursor: grabbing !important; user-select: none; }
+  .board.dropping .stage { box-shadow: inset 0 0 0 2px var(--pink); }
+
+  .n { position: absolute; left: 0; top: 0; outline: none; }
+  .n.sel { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .n.pop { animation: n-pop var(--t-base) var(--ease-pop); }
+  @keyframes n-pop { from { scale: 0.92; opacity: 0; } }
+
+  /* Cards: one per piece of the kit, coloured down the left by kind. */
+  .n-item {
+    width: 232px; display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: start; padding: 10px 12px 10px 10px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: inset 4px 0 0 var(--k), 0 1px 2px rgb(115 18 61 / 0.06);
+    cursor: grab; user-select: none; transition: box-shadow var(--t-base) var(--ease);
+  }
+  .n-item:hover { box-shadow: inset 4px 0 0 var(--k), var(--shadow); }
+  .ni-media { width: 52px; height: 52px; border-radius: 8px; background: var(--blush-2); overflow: hidden; display: grid; place-items: center; }
+  .ni-media img { width: 100%; height: 100%; object-fit: contain; padding: 6px; pointer-events: none; }
+  .ni-body { display: grid; gap: 2px; min-width: 0; }
+  .ni-meta { font-size: 0.64rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: var(--k); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ni-title { font-size: 0.9rem; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ni-min { font-size: 0.76rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .ni-min:empty { display: none; }
+  .ni-min.edited::after { content: ' · edited'; color: var(--ink-3); font-weight: 400; }
+  .n-item.ghost { position: fixed; z-index: 200; pointer-events: none; transform-origin: 0 0; box-shadow: inset 4px 0 0 var(--k), var(--shadow-lift); opacity: 0.95; transition: opacity var(--t-fast); }
+  .n-item.ghost.off { opacity: 0.5; }
+
+  /* Sticky notes */
+  .n-note {
+    --note: #fff1a6; padding: 14px 16px; background: var(--note); border-radius: 4px 4px 14px 4px; cursor: grab;
+    box-shadow: 0 1px 1px rgb(0 0 0 / 0.04), 0 10px 18px -12px rgb(79 34 60 / 0.35);
+    display: flex; flex-direction: column; gap: 4px; overflow: hidden;
+  }
+  .n-note.c-pink { --note: #fbd3e6; } .n-note.c-lilac { --note: #dfdaf8; } .n-note.c-white { --note: #ffffff; }
+  .n-note.c-white { border: 1px solid var(--line); }
+  .nt-text { flex: 1; font-size: 0.98rem; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; min-height: 1.3em; }
+  .nt-clock { font-size: 0.78rem; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .nt-clock:empty { display: none; }
+  .nt-text:empty::before { content: 'Type something'; color: rgb(0 0 0 / 0.35); }
+  .n.editing, .n.editing [data-text] { cursor: text; user-select: text; -webkit-user-select: text; }
+
+  /* Headings */
+  .n-text { cursor: grab; padding: 4px 6px; border-radius: 6px; }
+  .tx-text { font-size: 2rem; line-height: 1.15; letter-spacing: -0.02em; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; min-height: 1.15em; }
+  .tx-text:empty::before { content: 'Heading'; color: var(--ink-3); }
+
+  /* Frames: a block of the day. They total the minutes of what's inside. */
+  .n-frame { background: rgb(255 255 255 / 0.62); border: 1.5px solid var(--line); border-radius: 16px; }
+  .n-frame.sel { outline-offset: 2px; }
+  .fr-head {
+    display: flex; align-items: center; gap: 8px; padding: 12px 14px; cursor: grab;
+    border-bottom: 1px dashed var(--line); border-radius: 16px 16px 0 0;
+  }
+  .fr-head:hover { background: var(--blush-2); }
+  /* Start time. A fixed start is filled; a time that follows on from the block before is plain. */
+  .fr-clock { flex: none; font-size: 0.82rem; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; padding: 1px 0; }
+  .fr-clock.fixed { color: var(--accent-ink); background: var(--accent); padding: 1px 7px; border-radius: 6px; }
+  .fr-clock:empty { display: none; }
+  .fr-title { flex: 1; font-weight: 900; font-size: 0.98rem; outline: none; min-width: 2ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .n-frame.editing .fr-title { white-space: normal; text-overflow: clip; }
+  .fr-sum { flex: none; font-size: 0.72rem; font-weight: 700; color: var(--burgundy-deep); background: var(--blush); padding: 2px 9px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+  .grip { position: absolute; right: 2px; bottom: 2px; width: 18px; height: 18px; cursor: nwse-resize; opacity: 0; transition: opacity var(--t-fast); }
+  .grip::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); border-radius: 0 0 3px 0; }
+  .n:hover .grip, .n.sel .grip { opacity: 1; }
+
+  /* ── Floating controls ────────────────────────────────────────────────── */
+  .toolbar {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 20;
+    display: flex; align-items: center; gap: 2px; padding: 5px; border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .tb {
+    display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: none;
+    font-size: 0.85rem; font-weight: 700; color: var(--ink-2); cursor: pointer; white-space: nowrap; transition: background var(--t-fast), color var(--t-fast);
+  }
+  .tb svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tb svg circle { fill: currentColor; }
+  .tb.icon { padding: 0 9px; }
+  .tb:hover:not(:disabled), .tb[aria-expanded='true'] { background: var(--blush-2); color: var(--accent); }
+  .tb:disabled { opacity: 0.35; cursor: default; }
+  .tb[data-lib-toggle][aria-expanded='true'] { color: var(--accent); }
+  .tb-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+  .tb-menu { position: relative; }
+  .menu {
+    position: absolute; top: calc(100% + 10px); left: 0; width: 300px; display: grid; gap: 2px; padding: 6px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lift); z-index: 30;
+    animation: menu-in var(--t-base) var(--ease);
+  }
+  .menu.right { left: auto; right: 0; }
+  @keyframes menu-in { from { opacity: 0; transform: translateY(-4px); } }
+  .menu button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 0; border-radius: 10px; background: none; cursor: pointer; }
+  .menu button:hover:not(:disabled) { background: var(--blush-2); }
+  .menu button strong { font-size: 0.9rem; }
+  .menu button small { font-size: 0.8rem; color: var(--ink-2); line-height: 1.35; }
+  .menu button:disabled { opacity: 0.5; cursor: default; }
+  .menu button.danger strong { color: #b42318; }
+  .menu-note { padding: 8px 12px 4px; border-top: 1px solid var(--line-2); font-size: 0.78rem; }
+
+  .selbar {
+    position: absolute; left: 0; top: 0; z-index: 15; display: flex; align-items: center; gap: 2px; padding: 4px;
+    background: var(--ink); color: #fff; border-radius: 12px; box-shadow: var(--shadow-lift); font-size: 0.82rem; font-weight: 700; white-space: nowrap;
+  }
+  .selbar button, .selbar a { border: 0; background: none; color: inherit; font-weight: 700; padding: 6px 10px; border-radius: 8px; cursor: pointer; text-decoration: none; }
+  .selbar button:hover, .selbar a:hover { background: rgb(255 255 255 / 0.12); }
+  .selbar .danger { color: #ffb4c8; }
+  .sb-sep { width: 1px; height: 18px; background: rgb(255 255 255 / 0.2); margin: 0 2px; }
+  .sb-swatches { display: flex; gap: 5px; padding: 0 6px; }
+  .selbar .sw { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 2px solid transparent; background: var(--note); }
+  .sw.c-yellow { --note: #fff1a6; } .sw.c-pink { --note: #fbd3e6; } .sw.c-lilac { --note: #dfdaf8; } .sw.c-white { --note: #fff; }
+  .selbar .sw[aria-pressed='true'] { border-color: #fff; box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #fff; }
+  .selbar .sw:hover { background: var(--note); transform: scale(1.1); }
+  .sb-step { display: flex; align-items: center; gap: 2px; }
+  .sb-count { padding: 0 8px 0 10px; font-variant-numeric: tabular-nums; }
+  .sb-time { display: flex; align-items: center; gap: 6px; padding: 0 4px 0 8px; }
+  .sb-time input { color-scheme: dark; background: rgb(255 255 255 / 0.1); border: 0; border-radius: 6px; color: #fff; padding: 3px 6px; font: inherit; font-variant-numeric: tabular-nums; }
+  .sb-step span { min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
+  .sb-step button { width: 28px; padding: 6px 0; font-size: 1rem; line-height: 1; }
+
+  .tally {
+    position: absolute; left: 14px; bottom: 14px; z-index: 10; padding: 7px 14px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); font-size: 0.8rem; max-width: calc(100% - 200px);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tally strong { color: var(--accent); }
+  .zoom { position: absolute; right: 14px; bottom: 14px; z-index: 10; display: flex; padding: 3px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .zoom button { min-width: 34px; height: 32px; border: 0; background: none; border-radius: 9px; cursor: pointer; font-weight: 700; color: var(--ink-2); font-size: 1rem; }
+  .zoom .zl { font-size: 0.78rem; min-width: 56px; font-variant-numeric: tabular-nums; }
+  .zoom button:hover { background: var(--blush-2); color: var(--accent); }
+
+  .toast {
+    position: absolute; left: 50%; bottom: 64px; z-index: 40; display: flex; align-items: center; gap: 12px;
+    transform: translate(-50%, 16px); opacity: 0; pointer-events: none; padding: 9px 10px 9px 18px; border-radius: 18px;
+    background: var(--ink); color: #fff; font-weight: 700; font-size: 0.88rem; width: max-content; max-width: calc(100% - 32px); text-wrap: balance;
+    transition: transform var(--t-base) var(--ease), opacity var(--t-base) var(--ease);
+  }
+  .toast:not(:has(button)) { padding-right: 18px; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .toast button { border: 0; background: rgb(255 255 255 / 0.14); color: #fff; font-weight: 700; padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+  .toast button:hover { background: rgb(255 255 255 / 0.24); }
+
+  .list-dlg { user-select: text; -webkit-user-select: text; border: 0; border-radius: 18px; padding: 22px; width: min(560px, calc(100% - 32px)); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-lift); }
+  .list-dlg::backdrop { background: rgb(29 20 24 / 0.35); }
+  .list-dlg form { display: grid; gap: 10px; }
+  .list-dlg textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 12px; font: 0.85rem/1.5 ui-monospace, Menlo, monospace; resize: vertical; }
+  .list-dlg .btn { justify-self: end; }
+
+  /* ── Empty wall ───────────────────────────────────────────────────────── */
+  .empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 72px 16px 64px; z-index: 12; overflow-y: auto; pointer-events: none; }
+  .empty-card {
+    pointer-events: auto; width: min(640px, 100%); display: grid; gap: 14px; padding: clamp(22px, 4vw, 36px);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-lift);
+    animation: menu-in var(--t-slow) var(--ease);
+  }
+  .empty-card h1 { font-size: clamp(1.8rem, 3.6vw, 2.6rem); }
+  .empty-card .lede { font-size: 1rem; }
+  .starts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 4px; }
+  .start {
+    display: grid; gap: 4px; align-content: start; text-align: left; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); cursor: pointer;
+    transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast) var(--ease);
+  }
+  .start:hover:not(:disabled) { border-color: var(--accent); background: var(--blush-2); transform: translateY(-1px); }
+  .start strong { font-size: 0.98rem; }
+  .start small { font-size: 0.84rem; color: var(--ink-2); line-height: 1.4; }
+  .start:disabled { opacity: 0.55; cursor: default; }
+  .start.blank { border-style: dashed; }
+
+  @media (max-width: 760px) {
+    .lib { position: absolute; inset: 0 auto 0 0; width: min(340px, 88vw); box-shadow: var(--shadow-lift); z-index: 35; }
+    .board.lib-closed .lib { margin-left: calc(-1 * min(340px, 88vw) - 1px); }
+    .tb span { display: none; }
+    .tb { padding: 0 9px; }
+    .toolbar { top: 10px; max-width: calc(100% - 20px); }
+    .tally { bottom: 60px; max-width: calc(100% - 28px); }
+    .starts { grid-template-columns: 1fr; }
+    .menu { position: fixed; left: 10px; right: 10px; top: calc(var(--head-h) + 62px); width: auto; }
+    .menu.right { left: 10px; right: 10px; }
+  }
+  @media print { .board { display: none; } }
+</style>
